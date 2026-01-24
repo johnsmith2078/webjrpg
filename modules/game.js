@@ -155,14 +155,15 @@ export function createGame({ state }) {
   function doCraft(recipeId) {
     if (s.gameOver) return;
     craft(s, recipeId);
+    checkQuestProgress(s);
     persist();
     api.notify();
   }
 
   function combatAction(action) {
     if (!isInCombat(s)) return;
-    resolveCombatAction(s, rng, action);
-    // time passes per round
+    const result = resolveCombatAction(s, rng, action);
+    checkQuestProgress(s);
     s.timeMin += 5;
     persist();
     api.notify();
@@ -233,25 +234,61 @@ export function createGame({ state }) {
         label: `使用：${DATA.items[id].name}`,
         kind: "combat"
       }));
+      const skillChoices = [];
+      if (s.flags.skills_learned_purify && !s.combat.usedPurify) {
+        skillChoices.push({ id: "skill:purify", label: "破邪斩", kind: "combat" });
+      }
+      if (s.flags.skills_learned_focus && (!s.combat.skillCooldowns?.focus || s.combat.skillCooldowns.focus === 0)) {
+        skillChoices.push({ id: "skill:focus", label: "凝神", kind: "combat" });
+      }
+      if (s.flags.skills_learned_sweep && (!s.combat.skillCooldowns?.sweep || s.combat.skillCooldowns.sweep === 0)) {
+        skillChoices.push({ id: "skill:sweep", label: "横扫", kind: "combat" });
+      }
+      if (s.flags.skills_learned_heal_light && (!s.combat.skillCooldowns?.heal_light || s.combat.skillCooldowns.heal_light === 0)) {
+        skillChoices.push({ id: "skill:heal_light", label: "微光治愈", kind: "combat" });
+      }
+      if (s.flags.skills_learned_stealth && (!s.combat.skillCooldowns?.stealth || s.combat.skillCooldowns.stealth === 0)) {
+        skillChoices.push({ id: "skill:stealth", label: "隐身", kind: "combat" });
+      }
+
       return [
         { id: "attack", label: "攻击", kind: "combat" },
         { id: "defend", label: "防御", kind: "combat" },
-        ...(s.flags.has_iron_blade && s.combat && !s.combat.usedPurify
-          ? [{ id: "skill:purify", label: "破邪斩", kind: "combat" }]
-          : []),
+        ...skillChoices,
         ...useChoices,
         { id: "flee", label: "逃跑", kind: "combat", tone: "secondary" }
       ];
     }
 
     if (s.prompt) {
-      const list = s.prompt.choices.map((c) => ({
-        id: `prompt:${c.id}`,
-        label: c.label,
-        disabled: !!c.disabled,
-        sub: c.disabledReason || "",
-        kind: "action"
-      }));
+      const list = s.prompt.choices.map((c) => {
+        let disabled = !!c.disabled;
+        let sub = c.disabledReason || "";
+        
+        if (c.requires) {
+          const check = checkRequirements(s, c.requires);
+          if (!check.ok) {
+            disabled = true;
+            const reqs = [];
+            if (c.requires.gold) reqs.push(`${c.requires.gold} 钱`);
+            if (c.requires.items) {
+              for (const [id, qty] of Object.entries(c.requires.items)) {
+                const name = DATA.items[id]?.name || id;
+                reqs.push(`${name} x${qty}`);
+              }
+            }
+            sub = reqs.length > 0 ? `需要：${reqs.join(", ")}` : check.reason;
+          }
+        }
+
+        return {
+          id: `prompt:${c.id}`,
+          label: c.label,
+          disabled: disabled,
+          sub: sub,
+          kind: "action"
+        };
+      });
       return [...list, { id: "prompt:close", label: "暂时离开", kind: "action", tone: "secondary" }];
     }
 
@@ -283,11 +320,17 @@ export function createGame({ state }) {
     }
 
     // main
+    const questChoices = [];
+    if (s.quests && Object.keys(s.quests).length > 0) {
+      questChoices.push({ id: "quests", label: "任务", kind: "action" });
+    }
+    
     return [
       { id: "explore", label: "探索", kind: "action" },
       { id: "travel", label: "出发", kind: "action" },
       { id: "craft", label: "制作", kind: "action" },
-      { id: "rest", label: "休息", kind: "action", tone: "secondary" }
+      { id: "rest", label: "休息", kind: "action", tone: "secondary" },
+      ...questChoices
     ];
   }
 
@@ -319,7 +362,143 @@ export function createGame({ state }) {
       return;
     }
 
+    if (id === "quests") {
+      return showQuests();
+    }
+
     if (isInCombat(s)) return combatAction(id);
+  }
+  
+  function showQuests() {
+    let hasActive = false;
+    let hasCompleted = false;
+
+    for (const [questId, quest] of Object.entries(DATA.quests)) {
+      const qState = s.quests && s.quests[questId];
+      if (qState && qState.started && !qState.completed) {
+        if (!hasActive) {
+          s.log.push({ id: nowId(), type: "system", text: "=== 进行中的任务 ===" });
+          hasActive = true;
+        }
+        s.log.push({ id: nowId(), type: "rare", text: `${quest.name}` });
+        s.log.push({ id: nowId(), type: "system", text: quest.description });
+
+        if (quest.objectives) {
+          for (const obj of quest.objectives) {
+            const objKey = `${questId}_${obj.type}_${obj.item || obj.location || obj.enemy}`;
+            const prog = qState.progress[objKey] || { current: 0, target: obj.qty || obj.count || 1 };
+            
+            let statusText = "";
+            if (prog.complete) {
+              statusText = " [已完成]";
+            } else {
+              statusText = ` (${prog.current}/${prog.target})`;
+            }
+            
+            s.log.push({
+              id: nowId(),
+              type: "system",
+              text: `  - ${obj.description || "目标"}${statusText}`
+            });
+          }
+        }
+      }
+    }
+
+    for (const [questId, quest] of Object.entries(DATA.quests)) {
+      const qState = s.quests && s.quests[questId];
+      if (qState && qState.completed) {
+        if (!hasCompleted) {
+          s.log.push({ id: nowId(), type: "system", text: "=== 已完成的任务 ===" });
+          hasCompleted = true;
+        }
+        s.log.push({ id: nowId(), type: "system", text: `${quest.name} [完成]` });
+      }
+    }
+
+    if (!hasActive && !hasCompleted) {
+      s.log.push({ id: nowId(), type: "system", text: "你还没有接到任何任务。先去和村民聊聊吧。" });
+    } else {
+      s.log.push({ id: nowId(), type: "system", text: "任务会自动更新进度，继续探索吧。" });
+    }
+    
+    persist();
+    api.notify();
+  }
+
+  function checkQuestProgress(state) {
+    if (!state.quests) state.quests = {};
+    
+    for (const [questId, quest] of Object.entries(DATA.quests)) {
+      // Only check progress for started, uncompleted quests
+      if (!state.quests[questId] || !state.quests[questId].started || state.quests[questId].completed) continue;
+      
+      updateQuestObjectives(state, questId, quest);
+    }
+  }
+  
+  function updateQuestObjectives(state, questId, quest) {
+    const questState = state.quests[questId];
+    if (!questState || !questState.started) return;
+    
+    let allComplete = true;
+    
+    for (const objective of quest.objectives) {
+      let complete = false;
+      const objKey = `${questId}_${objective.type}_${objective.item || objective.location || objective.enemy}`;
+      
+      if (objective.type === "collect") {
+        const has = state.inventory[objective.item] || 0;
+        complete = has >= objective.qty;
+        questState.progress[objKey] = { current: has, target: objective.qty, complete };
+      } else if (objective.type === "craft") {
+        complete = state.flags[quest.recipe] || false;
+        questState.progress[objKey] = { current: complete ? 1 : 0, target: 1, complete };
+      } else if (objective.type === "defeat") {
+        complete = state.flags[`defeated_${objective.enemy}`] || false;
+        questState.progress[objKey] = { current: complete ? 1 : 0, target: 1, complete };
+      } else if (objective.type === "explore") {
+        complete = (state.quests[questId]?.progress?.[objKey]?.current || 0) >= objective.count;
+        if (!questState.progress[objKey]) {
+          questState.progress[objKey] = { current: 0, target: objective.count, complete };
+        }
+      }
+      
+      if (!complete) allComplete = false;
+      
+      if (complete && !questState.progress[objKey]?.complete) {
+        state.log.push({ id: nowId(), type: "rare", text: `任务目标完成：${objective.description || objective.type}` });
+      }
+    }
+    
+    if (allComplete) {
+      completeQuest(state, questId, quest);
+    }
+  }
+  
+  function completeQuest(state, questId, quest) {
+    state.log.push({ id: nowId(), type: "rare", text: `任务完成：${quest.name}` });
+    
+    if (quest.rewards.gold) {
+      state.player.gold += quest.rewards.gold;
+      state.log.push({ id: nowId(), type: "system", text: `获得奖励：${quest.rewards.gold} 金币` });
+    }
+    
+    if (quest.rewards.items) {
+      for (const [itemId, qty] of Object.entries(quest.rewards.items)) {
+        state.inventory[itemId] = (state.inventory[itemId] || 0) + qty;
+        const itemName = DATA.items[itemId]?.name || itemId;
+        state.log.push({ id: nowId(), type: "system", text: `获得奖励：${itemName} x${qty}` });
+      }
+    }
+    
+    if (quest.rewards.flags) {
+      for (const [flag, value] of Object.entries(quest.rewards.flags)) {
+        state.flags[flag] = value;
+      }
+    }
+    
+    state.quests[questId].completed = true;
   }
 
   function choosePrompt(choiceId) {

@@ -777,3 +777,9 @@ textarea {
     width: 100%;
   }
 }
+
+.inv__btn--selected {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}

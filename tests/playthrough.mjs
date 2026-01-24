@@ -123,17 +123,32 @@ function main() {
       resolvePromptIfAny(game);
       resolveCombat(game);
     },
-    120,
+    200,
     "收集杉木"
   );
   game.handleChoice("craft");
   game.handleChoice("craft:make_firepit");
   assert(game.getState().flags.has_firepit, "制作石火坑后应有 has_firepit");
 
+  // 1.2) 触发村长对话并接受任务
+  // resolvePromptIfAny 会默认选第一个可用选项 (ask_shrine)，这正是我们想要的
+  doUntil(
+    game,
+    () => game.getState().flags.met_elder,
+    () => {
+      game.handleChoice("explore");
+      resolvePromptIfAny(game);
+      resolveCombat(game);
+    },
+    120,
+    "触发村长对话"
+  );
+  assert(game.getState().quests["elder_wisdom"], "应触发村长智慧任务");
+
   // 1.5) 备足一些恢复品（饭团）
   doUntil(
     game,
-    () => countItem(game.getState(), "rice") >= 3,
+    () => countItem(game.getState(), "rice") >= 5,
     () => {
       game.handleChoice("explore");
       resolvePromptIfAny(game);
@@ -142,13 +157,12 @@ function main() {
     120,
     "收集米"
   );
-  game.handleChoice("craft");
-  game.handleChoice("craft:cook_rice");
-  game.handleChoice("craft");
-  game.handleChoice("craft:cook_rice");
-  game.handleChoice("craft");
-  game.handleChoice("craft:cook_rice");
-  assert(countItem(game.getState(), "onigiri") >= 2, "应至少有 2 个饭团");
+  // 把米都做成饭团
+  while (countItem(game.getState(), "rice") > 0) {
+    game.handleChoice("craft");
+    game.handleChoice("craft:cook_rice");
+  }
+  assert(countItem(game.getState(), "onigiri") >= 4, "应至少有 4 个饭团");
 
   // 2) 解锁并前往杉径
   doUntil(
@@ -164,6 +178,20 @@ function main() {
   );
   travelTo(game, "forest_path");
   assert(game.getState().location === "forest_path", "应到达 forest_path");
+
+  // 2.1) 触发草药师对话并接受任务
+  doUntil(
+    game,
+    () => game.getState().flags.met_herbalist,
+    () => {
+      game.handleChoice("explore");
+      resolvePromptIfAny(game);
+      resolveCombat(game);
+    },
+    120,
+    "触发草药师对话"
+  );
+  assert(game.getState().quests["herbalist_collection"], "应触发草药采集任务");
 
   // 3) 在杉径刷苦草
   doUntil(
@@ -220,9 +248,11 @@ function main() {
   travelTo(game, "abandoned_mine");
   assert(game.getState().location === "abandoned_mine", "应到达 abandoned_mine");
 
+  // 6.1) 触发铁匠对话（需要在村庄，所以先不触发，等回村）
+
   doUntil(
     game,
-    () => countItem(game.getState(), "iron_ore") >= 2,
+    () => countItem(game.getState(), "iron_ore") >= 3,
     () => {
       game.handleChoice("explore");
       resolvePromptIfAny(game);
@@ -240,6 +270,21 @@ function main() {
     game.handleChoice("travel:forest_path");
     game.handleChoice("travel");
     game.handleChoice("travel:village");
+    
+    // 回村后尝试触发铁匠
+    doUntil(
+      game,
+      () => game.getState().flags.met_blacksmith,
+      () => {
+        game.handleChoice("explore");
+        resolvePromptIfAny(game);
+        resolveCombat(game);
+      },
+      120,
+      "触发铁匠对话"
+    );
+    assert(game.getState().quests["blacksmith_mastery"], "应触发锻造大师任务");
+
     doUntil(
       game,
       () => countItem(game.getState(), "cedar_wood") >= 2,
@@ -251,6 +296,27 @@ function main() {
       120,
       "补杉木"
     );
+  } else {
+    // 即使木头够了，也要回村找铁匠
+    game.handleChoice("travel");
+    game.handleChoice("travel:old_shrine");
+    game.handleChoice("travel");
+    game.handleChoice("travel:forest_path");
+    game.handleChoice("travel");
+    game.handleChoice("travel:village");
+    
+    doUntil(
+      game,
+      () => game.getState().flags.met_blacksmith,
+      () => {
+        game.handleChoice("explore");
+        resolvePromptIfAny(game);
+        resolveCombat(game);
+      },
+      120,
+      "触发铁匠对话"
+    );
+    assert(game.getState().quests["blacksmith_mastery"], "应触发锻造大师任务");
   }
 
   game.handleChoice("craft");
@@ -260,6 +326,9 @@ function main() {
   assert(countItem(game.getState(), "iron_blade") >= 1, "应获得 道具：铁刃");
 
   // 8) 回到古神社刷出守护者并击败
+  if (game.getState().location === "village") {
+    travelTo(game, "forest_path");
+  }
   travelTo(game, "old_shrine");
 
   assert(game.getState().location === "old_shrine", "此时应在 old_shrine");

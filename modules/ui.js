@@ -32,6 +32,7 @@ export function mountApp({ game }) {
   const $inventoryItemTemplate = el("inventoryItemTemplate");
   const $useSelected = el("useSelected");
   const $dropSelected = el("dropSelected");
+  const $inventoryDesc = el("inventoryDesc");
 
   const $settingsToggle = el("settingsToggle");
   const $settingsModal = el("settingsModal");
@@ -52,6 +53,16 @@ export function mountApp({ game }) {
   }
 
   function renderLog(state) {
+    const firstDom = $log.querySelector(".log__item");
+    if (firstDom && state.log.length > 0) {
+      const firstId = firstDom.getAttribute("data-id");
+      if (firstId !== state.log[0].id) {
+        $log.innerHTML = "";
+      }
+    } else if (firstDom && state.log.length === 0) {
+      $log.innerHTML = "";
+    }
+
     const existing = new Set([...$log.querySelectorAll(".log__item")].map((n) => n.getAttribute("data-id")));
     for (const entry of state.log) {
       if (existing.has(entry.id)) continue;
@@ -133,6 +144,9 @@ export function mountApp({ game }) {
     selectedInv = null;
     $useSelected.disabled = true;
     $dropSelected.disabled = true;
+    $inventoryDesc.textContent = "你携带的东西，会改变故事的回应。";
+    const allBtns = $inventoryList.querySelectorAll(".inv__btn");
+    for (const b of allBtns) b.classList.remove("inv__btn--selected");
   }
 
   function renderInventory(state) {
@@ -158,8 +172,20 @@ export function mountApp({ game }) {
       name.textContent = (DATA.items[id] && DATA.items[id].name) || id;
       meta.textContent = `x${qty}`;
       btn.setAttribute("data-item", id);
+      
+      if (id === selectedInv) {
+        btn.classList.add("inv__btn--selected");
+      }
+
       btn.addEventListener("click", () => {
         selectedInv = id;
+        const allBtns = $inventoryList.querySelectorAll(".inv__btn");
+        for (const b of allBtns) b.classList.remove("inv__btn--selected");
+        btn.classList.add("inv__btn--selected");
+        
+        const itemData = DATA.items[id];
+        $inventoryDesc.textContent = itemData.desc || "这个物品没有什么特别的。";
+
         $useSelected.disabled = false;
         $dropSelected.disabled = false;
       });

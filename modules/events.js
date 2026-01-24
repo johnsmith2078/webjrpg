@@ -24,6 +24,12 @@ export function checkRequirements(state, req) {
     const q = typeof req.qty === "number" ? req.qty : 1;
     if (!hasEnoughItem(state, req.item, q)) return { ok: false, reason: "道具不足" };
   }
+  if (req.items) {
+    for (const [id, qty] of Object.entries(req.items)) {
+      const q = Number(qty || 1);
+      if (!hasEnoughItem(state, id, q)) return { ok: false, reason: "道具不足" };
+    }
+  }
   return { ok: true };
 }
 
@@ -51,18 +57,21 @@ export function applyOps(state, rng, ops, lines) {
     if (op.op === "gainGold") {
       const amt = Number(op.amt || 0);
       state.player.gold += amt;
-      lines.push({ id: nowId(), type: "system", text: `获得 ${amt} 钱。` });
+      lines.push({ id: nowId(), type: "system", text: `获得 ${amt} 钱。`, });
     }
     if (op.op === "spendGold") {
       const amt = Number(op.amt || 0);
       state.player.gold = Math.max(0, Number(state.player.gold || 0) - amt);
-      lines.push({ id: nowId(), type: "system", text: `花费 ${amt} 钱。` });
+      lines.push({ id: nowId(), type: "system", text: `花费 ${amt} 钱。`, });
     }
     if (op.op === "setFlag") {
       state.flags[op.flag] = true;
     }
     if (op.op === "clearFlag") {
       delete state.flags[op.flag];
+    }
+    if (op.op === "log") {
+      lines.push({ id: nowId(), type: "narration", text: op.text });
     }
     if (op.op === "advanceTime") {
       state.timeMin += Number(op.min || 0);
@@ -72,7 +81,16 @@ export function applyOps(state, rng, ops, lines) {
       if (amt > 0) {
         const before = Number(state.player.hp || 0);
         state.player.hp = Math.min(Number(state.player.maxHp || 0), before + amt);
-        lines.push({ id: nowId(), type: "system", text: `恢复 ${state.player.hp - before} 点体力。` });
+        lines.push({ id: nowId(), type: "system", text: `恢复 ${state.player.hp - before} 点体力。`, });
+      }
+    }
+    if (op.op === "startQuest") {
+      const qId = op.quest;
+      if (!state.quests) state.quests = {};
+      if (!state.quests[qId]) {
+        state.quests[qId] = { started: true, progress: {} };
+        const qName = (DATA.quests && DATA.quests[qId] && DATA.quests[qId].name) || qId;
+        lines.push({ id: nowId(), type: "system", text: `接受任务：${qName}` });
       }
     }
     if (op.op === "startCombat") {
@@ -100,6 +118,8 @@ export function rollEventId(state, rng) {
       const seen = state.seenEvents && typeof state.seenEvents === "object" ? Number(state.seenEvents[id] || 0) : 0;
       if (seen <= 0) {
         priorityOnce.push({ id, p: Number(ev.priority || 0) });
+        continue;
+      } else {
         continue;
       }
     }
