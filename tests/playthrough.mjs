@@ -40,6 +40,18 @@ function doUntil(game, pred, stepFn, limit, label) {
   throw new Error(`超出步数上限：${label}`);
 }
 
+function resolvePromptIfAny(game) {
+  const s = game.getState();
+  if (!s.prompt) return;
+  // Prefer a deterministic choice: first enabled.
+  const c = (s.prompt.choices || []).find((x) => !x.disabled);
+  if (c) {
+    game.handleChoice(`prompt:${c.id}`);
+    return;
+  }
+  game.handleChoice("prompt:close");
+}
+
 function maybeHeal(game) {
   const s = game.getState();
   if (s.player.hp <= 10 && (s.inventory.onigiri || 0) > 0) {
@@ -60,7 +72,14 @@ function resolveCombat(game) {
     if (!st.combat) return;
     maybeHeal(game);
     if (game.getState().combat) {
-      game.handleChoice("attack");
+      const cs = game.getState();
+      if (cs.combat && cs.combat.enemyId === "shrine_guardian" && (cs.inventory.bound_charm || 0) > 0) {
+        game.handleChoice("use:bound_charm");
+      } else if (cs.combat && cs.combat.enemyId === "shrine_guardian" && cs.flags.has_iron_blade && !cs.combat.usedPurify) {
+        game.handleChoice("skill:purify");
+      } else {
+        game.handleChoice("attack");
+      }
     }
     if (game.getState().gameOver) {
       throw new Error("战斗失败：游戏结束");
@@ -83,6 +102,7 @@ function main() {
     () => game.getState().flags.heard_rumor_shrine,
     () => {
       game.handleChoice("explore");
+      resolvePromptIfAny(game);
       resolveCombat(game);
     },
     120,
@@ -94,6 +114,7 @@ function main() {
     () => countItem(game.getState(), "cedar_wood") >= 5,
     () => {
       game.handleChoice("explore");
+      resolvePromptIfAny(game);
       resolveCombat(game);
     },
     120,
@@ -109,6 +130,7 @@ function main() {
     () => countItem(game.getState(), "rice") >= 3,
     () => {
       game.handleChoice("explore");
+      resolvePromptIfAny(game);
       resolveCombat(game);
     },
     120,
@@ -128,6 +150,7 @@ function main() {
     () => game.getState().timeMin >= 30,
     () => {
       game.handleChoice("explore");
+      resolvePromptIfAny(game);
       resolveCombat(game);
     },
     60,
@@ -143,6 +166,7 @@ function main() {
     () => countItem(game.getState(), "herbs") >= 1,
     () => {
       game.handleChoice("explore");
+      resolvePromptIfAny(game);
       resolveCombat(game);
     },
     120,
@@ -159,6 +183,7 @@ function main() {
     () => countItem(game.getState(), "paper_charm") >= 1,
     () => {
       game.handleChoice("explore");
+      resolvePromptIfAny(game);
       resolveCombat(game);
     },
     120,
@@ -166,9 +191,14 @@ function main() {
   );
 
   // 5) 制作“缚符”（回归测试：这里不能崩）
+  const beforeCharm = countItem(game.getState(), "paper_charm");
+  const beforeHerbs = countItem(game.getState(), "herbs");
   game.handleChoice("craft");
   game.handleChoice("craft:bind_charm");
   assert(game.getState().flags.charm_bound, "制作缚符后应有 charm_bound");
+  assert(countItem(game.getState(), "paper_charm") === beforeCharm - 1, "缚符应消耗 纸符 x1");
+  assert(countItem(game.getState(), "herbs") === beforeHerbs - 1, "缚符应消耗 苦草 x1");
+  assert(countItem(game.getState(), "bound_charm") >= 1, "应获得 道具：缚符");
 
   // 6) 解锁废矿 (>=90min) 并获取铁矿石
   doUntil(
@@ -176,6 +206,7 @@ function main() {
     () => game.getState().timeMin >= 90,
     () => {
       game.handleChoice("explore");
+      resolvePromptIfAny(game);
       resolveCombat(game);
     },
     120,
@@ -191,6 +222,7 @@ function main() {
     () => countItem(game.getState(), "iron_ore") >= 2,
     () => {
       game.handleChoice("explore");
+      resolvePromptIfAny(game);
       resolveCombat(game);
     },
     200,
@@ -210,6 +242,7 @@ function main() {
       () => countItem(game.getState(), "cedar_wood") >= 2,
       () => {
         game.handleChoice("explore");
+        resolvePromptIfAny(game);
         resolveCombat(game);
       },
       120,
@@ -221,6 +254,7 @@ function main() {
   game.handleChoice("craft:forge_iron_blade");
   assert(game.getState().flags.has_iron_blade, "锻铁刃后应有 has_iron_blade");
   assert(game.getState().player.atk >= 5, "锻铁刃应提升攻击");
+  assert(countItem(game.getState(), "iron_blade") >= 1, "应获得 道具：铁刃");
 
   // 8) 回到古神社刷出守护者并击败
   game.handleChoice("travel");
@@ -243,6 +277,7 @@ function main() {
     () => game.getState().flags.shrine_cleansed,
     () => {
       game.handleChoice("explore");
+      resolvePromptIfAny(game);
       if (game.getState().combat && game.getState().combat.enemyId === "shrine_guardian") {
         sawGuardian = true;
       }
@@ -252,22 +287,18 @@ function main() {
     "击败神社守"
   );
   assert(sawGuardian, "应至少触发一次 shrine_guardian 战斗");
+  assert(countItem(game.getState(), "shrine_relic") >= 1, "击败神社守应掉落 神社遗物");
 
   // 9) 前往山口并触发结局
   game.handleChoice("travel");
   game.handleChoice("travel:mountain_pass");
   assert(game.getState().location === "mountain_pass", "应到达 mountain_pass");
 
-  doUntil(
-    game,
-    () => game.getState().gameOver,
-    () => {
-      game.handleChoice("explore");
-      resolveCombat(game);
-    },
-    60,
-    "触发结局"
-  );
+  // 触发结局事件（会弹出 prompt），选择封印结局。
+  game.handleChoice("explore");
+  assert(!!game.getState().prompt, "山口应弹出结局选择");
+  game.handleChoice("prompt:seal");
+  assert(game.getState().gameOver, "选择结局后应 gameOver");
 
   const final = snapshot(game.getState());
   console.log("PASS: 全流程通关测试");

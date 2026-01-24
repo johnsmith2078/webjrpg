@@ -2,7 +2,7 @@ import { createRng } from "./seed.js";
 import { DATA } from "./data.js";
 import { deriveUnlocked, createInitialState } from "./state.js";
 import { saveState } from "./save.js";
-import { rollEventId, applyEvent } from "./events.js";
+import { rollEventId, applyEvent, applyOps } from "./events.js";
 import { startCombat, isInCombat, resolveCombatAction } from "./combat.js";
 import { craft, listAvailableRecipes, canCraft } from "./crafting.js";
 import { locationTargets, travel } from "./world.js";
@@ -40,6 +40,12 @@ export function createGame({ state }) {
 
   function explore() {
     if (s.gameOver) return;
+    if (s.prompt) {
+      s.log.push({ id: nowId(), type: "system", text: "你还没做出选择。" });
+      persist();
+      api.notify();
+      return;
+    }
     const evId = rollEventId(s, rng);
     if (!evId) {
       s.log.push({ id: nowId(), type: "system", text: "四下无声。" });
@@ -54,6 +60,9 @@ export function createGame({ state }) {
     s.timeMin += 10;
     if (res.startCombat) {
       startCombat(s, res.startCombat);
+    }
+    if (res.prompt) {
+      s.prompt = res.prompt;
     }
     if (res.endGame) {
       s.gameOver = true;
@@ -161,7 +170,14 @@ export function createGame({ state }) {
 
     if (isInCombat(s)) {
       const usable = Object.entries(s.inventory)
-        .filter(([id, qty]) => qty > 0 && DATA.items[id] && DATA.items[id].heal)
+        .filter(([id, qty]) => {
+          if (qty <= 0) return false;
+          const it = DATA.items[id];
+          if (!it) return false;
+          if (it.heal) return true;
+          if (it.combat) return true;
+          return false;
+        })
         .map(([id]) => id);
       const useChoices = usable.slice(0, 3).map((id) => ({
         id: `use:${id}`,
@@ -171,9 +187,23 @@ export function createGame({ state }) {
       return [
         { id: "attack", label: "攻击", kind: "combat" },
         { id: "defend", label: "防御", kind: "combat" },
+        ...(s.flags.has_iron_blade && s.combat && !s.combat.usedPurify
+          ? [{ id: "skill:purify", label: "破邪斩", kind: "combat" }]
+          : []),
         ...useChoices,
         { id: "flee", label: "逃跑", kind: "combat", tone: "secondary" }
       ];
+    }
+
+    if (s.prompt) {
+      const list = s.prompt.choices.map((c) => ({
+        id: `prompt:${c.id}`,
+        label: c.label,
+        disabled: !!c.disabled,
+        sub: c.disabledReason || "",
+        kind: "action"
+      }));
+      return [...list, { id: "prompt:close", label: "暂时离开", kind: "action", tone: "secondary" }];
     }
 
     const mode = s.ui.mode;
@@ -214,6 +244,11 @@ export function createGame({ state }) {
 
   function handleChoice(id) {
     if (!id) return;
+
+    if (id.startsWith("prompt:")) {
+      const choiceId = id.slice("prompt:".length);
+      return choosePrompt(choiceId);
+    }
     if (id === "explore") return explore();
     if (id === "rest") return rest();
     if (id === "travel") return setMode("travel");
@@ -230,7 +265,43 @@ export function createGame({ state }) {
       return useItem(itemId);
     }
 
+    if (id === "skill:purify") {
+      if (isInCombat(s)) return combatAction(id);
+      return;
+    }
+
     if (isInCombat(s)) return combatAction(id);
+  }
+
+  function choosePrompt(choiceId) {
+    if (!s.prompt) return;
+    if (choiceId === "close") {
+      s.log.push({ id: nowId(), type: "system", text: "你把话咽回肚子里。" });
+      s.prompt = null;
+      persist();
+      api.notify();
+      return;
+    }
+    const c = (s.prompt.choices || []).find((x) => x.id === choiceId);
+    if (!c) return;
+    if (c.disabled) {
+      s.log.push({ id: nowId(), type: "system", text: "现在还做不到。" });
+      persist();
+      api.notify();
+      return;
+    }
+
+    const lines = [];
+    const { startCombat: enemyId, endGame } = applyOps(s, rng, c.ops || [], lines);
+    s.log.push(...lines);
+    if (enemyId) startCombat(s, enemyId);
+    if (endGame) {
+      s.gameOver = true;
+      s.log.push({ id: nowId(), type: "rare", text: "（终）" });
+    }
+    s.prompt = null;
+    persist();
+    api.notify();
   }
 
   // init

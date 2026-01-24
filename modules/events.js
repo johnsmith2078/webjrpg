@@ -1,6 +1,83 @@
 import { DATA } from "./data.js";
 import { hasAllFlags, nowId } from "./utils.js";
 
+function hasEnoughGold(state, amt) {
+  const n = Number(state.player && state.player.gold ? state.player.gold : 0);
+  return n >= Number(amt || 0);
+}
+
+function hasEnoughItem(state, itemId, qty) {
+  if (!itemId) return true;
+  const n = Number(state.inventory && state.inventory[itemId] ? state.inventory[itemId] : 0);
+  return n >= Number(qty || 0);
+}
+
+export function checkRequirements(state, req) {
+  if (!req || typeof req !== "object") return { ok: true };
+  if (req.flags) {
+    if (!hasAllFlags(state, req.flags)) return { ok: false, reason: "条件不足" };
+  }
+  if (typeof req.gold === "number") {
+    if (!hasEnoughGold(state, req.gold)) return { ok: false, reason: "钱不够" };
+  }
+  if (req.item) {
+    const q = typeof req.qty === "number" ? req.qty : 1;
+    if (!hasEnoughItem(state, req.item, q)) return { ok: false, reason: "道具不足" };
+  }
+  return { ok: true };
+}
+
+export function applyOps(state, rng, ops, lines) {
+  let startCombat = null;
+  let endGame = false;
+
+  for (const op of ops || []) {
+    if (!op || typeof op !== "object") continue;
+    if (op.op === "gainItem") {
+      const item = op.item;
+      const qty = Number(op.qty || 1);
+      state.inventory[item] = Number(state.inventory[item] || 0) + qty;
+      const name = (DATA.items[item] && DATA.items[item].name) || item;
+      lines.push({ id: nowId(), type: "system", text: `获得：${name} x${qty}` });
+    }
+    if (op.op === "loseItem") {
+      const item = op.item;
+      const qty = Number(op.qty || 1);
+      state.inventory[item] = Number(state.inventory[item] || 0) - qty;
+      if (state.inventory[item] <= 0) delete state.inventory[item];
+      const name = (DATA.items[item] && DATA.items[item].name) || item;
+      lines.push({ id: nowId(), type: "system", text: `失去：${name} x${qty}` });
+    }
+    if (op.op === "gainGold") {
+      const amt = Number(op.amt || 0);
+      state.player.gold += amt;
+      lines.push({ id: nowId(), type: "system", text: `获得 ${amt} 钱。` });
+    }
+    if (op.op === "spendGold") {
+      const amt = Number(op.amt || 0);
+      state.player.gold = Math.max(0, Number(state.player.gold || 0) - amt);
+      lines.push({ id: nowId(), type: "system", text: `花费 ${amt} 钱。` });
+    }
+    if (op.op === "setFlag") {
+      state.flags[op.flag] = true;
+    }
+    if (op.op === "clearFlag") {
+      delete state.flags[op.flag];
+    }
+    if (op.op === "advanceTime") {
+      state.timeMin += Number(op.min || 0);
+    }
+    if (op.op === "startCombat") {
+      startCombat = op.enemy;
+    }
+    if (op.op === "endGame") {
+      endGame = true;
+    }
+  }
+
+  return { startCombat, endGame };
+}
+
 export function rollEventId(state, rng) {
   const weighted = [];
   const priorityOnce = [];
@@ -46,31 +123,30 @@ export function applyEvent(state, rng, eventId) {
   }
   state.seenEvents[eventId] = Number(state.seenEvents[eventId] || 0) + 1;
 
-  let startCombat = null;
-  let endGame = false;
+  const { startCombat, endGame } = applyOps(state, rng, ev.ops || [], lines);
 
-  for (const op of ev.ops || []) {
-    if (!op || typeof op !== "object") continue;
-    if (op.op === "gainItem") {
-      const item = op.item;
-      const qty = Number(op.qty || 1);
-      state.inventory[item] = Number(state.inventory[item] || 0) + qty;
-      const name = (DATA.items[item] && DATA.items[item].name) || item;
-      lines.push({ id: nowId(), type: "system", text: `获得：${name} x${qty}` });
-    }
-    if (op.op === "setFlag") {
-      state.flags[op.flag] = true;
-    }
-    if (op.op === "advanceTime") {
-      state.timeMin += Number(op.min || 0);
-    }
-    if (op.op === "startCombat") {
-      startCombat = op.enemy;
-    }
-    if (op.op === "endGame") {
-      endGame = true;
-    }
+  let prompt = null;
+  if (ev.prompt && typeof ev.prompt === "object") {
+    const title = typeof ev.prompt.title === "string" ? ev.prompt.title : "";
+    const choices = Array.isArray(ev.prompt.choices) ? ev.prompt.choices : [];
+    prompt = {
+      eventId,
+      title,
+      choices: choices
+        .filter((c) => c && typeof c === "object" && typeof c.id === "string")
+        .map((c) => {
+          const req = c.requires || null;
+          const check = checkRequirements(state, req);
+          return {
+            id: c.id,
+            label: String(c.label || c.id),
+            disabled: !check.ok,
+            disabledReason: check.ok ? "" : check.reason,
+            ops: Array.isArray(c.ops) ? c.ops : []
+          };
+        })
+    };
   }
 
-  return { lines, startCombat, endGame };
+  return { lines, startCombat, endGame, prompt };
 }

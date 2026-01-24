@@ -45,7 +45,10 @@ export const DATA = {
     cedar_wood: { name: "杉木", tags: ["material"] },
     iron_ore: { name: "铁矿石", tags: ["ore"] },
     herbs: { name: "苦草", tags: ["medicine"], heal: 4 },
-    paper_charm: { name: "纸符", tags: ["talisman"] }
+    paper_charm: { name: "纸符", tags: ["talisman"] },
+    bound_charm: { name: "缚符", tags: ["talisman"], combat: { type: "stun", turns: 1 } },
+    iron_blade: { name: "铁刃", tags: ["weapon"] },
+    shrine_relic: { name: "神社遗物", tags: ["relic"] }
   },
 
   recipes: {
@@ -66,7 +69,7 @@ export const DATA = {
     bind_charm: {
       name: "缚符",
       inputs: { paper_charm: 1, herbs: 1 },
-      outputs: { paper_charm: 1 },
+      outputs: { bound_charm: 1 },
       timeCostMin: 15,
       effects: { setFlag: "charm_bound" },
       requirements: { flags: ["has_firepit"] }
@@ -74,7 +77,7 @@ export const DATA = {
     forge_iron_blade: {
       name: "锻铁刃",
       inputs: { iron_ore: 2, cedar_wood: 2 },
-      outputs: {},
+      outputs: { iron_blade: 1 },
       timeCostMin: 25,
       effects: { setFlag: "has_iron_blade", stats: { atk: 2 } },
       requirements: { flags: ["has_firepit"] }
@@ -90,7 +93,7 @@ export const DATA = {
       atk: 4,
       def: 2,
       gold: 20,
-      loot: { onigiri: 2 }
+      loot: { onigiri: 2, shrine_relic: 1 }
     }
   },
 
@@ -164,6 +167,33 @@ export const DATA = {
         { op: "advanceTime", min: 5 }
       ]
     },
+
+    mine_cursed_ore: {
+      at: "abandoned_mine",
+      w: 1,
+      once: true,
+      priority: 6,
+      text: ["矿壁深处泛着黑光。你的指尖发冷。"],
+      prompt: {
+        title: "黑光矿脉",
+        choices: [
+          {
+            id: "take",
+            label: "带走它（多拿 2 块铁矿石，但会沾上不祥）",
+            ops: [
+              { op: "gainItem", item: "iron_ore", qty: 2 },
+              { op: "setFlag", flag: "cursed" }
+            ]
+          },
+          {
+            id: "leave",
+            label: "别碰它（你不想招惹不该招惹的东西）",
+            ops: [{ op: "advanceTime", min: 5 }]
+          }
+        ]
+      },
+      ops: []
+    },
     mine_ore: {
       at: "abandoned_mine",
       w: 4,
@@ -179,8 +209,69 @@ export const DATA = {
       once: true,
       priority: 10,
       requirements: { flags: ["shrine_cleansed"] },
-      text: ["山口处，雾终于断开。", "大山像是松了口气。", "山下某处，铃声回应。"],
-      ops: [{ op: "endGame" }]
+      text: ["山口处，雾终于断开。", "大山像是松了口气。"],
+      prompt: {
+        title: "山口",
+        choices: [
+          {
+            id: "seal",
+            label: "把神社遗物封回鸟居之下（终结这段雾）",
+            requires: { item: "shrine_relic", qty: 1 },
+            ops: [
+              { op: "loseItem", item: "shrine_relic", qty: 1 },
+              { op: "setFlag", flag: "ending_seal" },
+              { op: "endGame" }
+            ]
+          },
+          {
+            id: "keep",
+            label: "把遗物收进怀里（你想看看它还能带来什么）",
+            requires: { item: "shrine_relic", qty: 1 },
+            ops: [
+              { op: "setFlag", flag: "ending_keep" },
+              { op: "endGame" }
+            ]
+          }
+        ]
+      },
+      ops: []
+    },
+
+    village_trader: {
+      at: "village",
+      w: 1,
+      once: true,
+      priority: 4,
+      text: ["游商在屋檐下摆开布包：\"要不要换点东西？\""],
+      prompt: {
+        title: "游商",
+        choices: [
+          {
+            id: "buy_herbs",
+            label: "用 2 钱换一把苦草",
+            requires: { gold: 2 },
+            ops: [
+              { op: "spendGold", amt: 2 },
+              { op: "gainItem", item: "herbs", qty: 1 }
+            ]
+          },
+          {
+            id: "buy_charm",
+            label: "用 3 钱换一张纸符",
+            requires: { gold: 3 },
+            ops: [
+              { op: "spendGold", amt: 3 },
+              { op: "gainItem", item: "paper_charm", qty: 1 }
+            ]
+          },
+          {
+            id: "leave",
+            label: "摇摇头离开",
+            ops: [{ op: "advanceTime", min: 5 }]
+          }
+        ]
+      },
+      ops: []
     }
   }
 };
