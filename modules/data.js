@@ -139,6 +139,36 @@ export const DATA = {
         { op: "advanceTime", min: 5 }
       ]
     },
+
+    forest_fork: {
+      at: "forest_path",
+      w: 1,
+      once: true,
+      priority: 4,
+      text: ["杉径在雾里分成两股。你听见远处有东西在拖行。"],
+      prompt: {
+        title: "岔路",
+        choices: [
+          {
+            id: "short",
+            label: "走近路（快，但更危险）",
+            ops: [
+              { op: "advanceTime", min: 5 },
+              { op: "startCombat", enemy: "bandit" }
+            ]
+          },
+          {
+            id: "long",
+            label: "绕远路（慢，但你能顺手采点草药）",
+            ops: [
+              { op: "advanceTime", min: 15 },
+              { op: "gainItem", item: "herbs", qty: 1 }
+            ]
+          }
+        ]
+      },
+      ops: []
+    },
     shrine_charm: {
       at: "old_shrine",
       w: 3,
@@ -154,6 +184,43 @@ export const DATA = {
         { op: "startCombat", enemy: "oni_wisp" },
         { op: "advanceTime", min: 5 }
       ]
+    },
+
+    shrine_offering: {
+      at: "old_shrine",
+      w: 1,
+      once: true,
+      priority: 5,
+      text: ["破损的供台上还留着灰。风里有一点米香。"],
+      prompt: {
+        title: "供台",
+        choices: [
+          {
+            id: "offer_food",
+            label: "供上一枚饭团（换一张缚符）",
+            requires: { item: "onigiri", qty: 1 },
+            ops: [
+              { op: "loseItem", item: "onigiri", qty: 1 },
+              { op: "gainItem", item: "bound_charm", qty: 1 },
+              { op: "advanceTime", min: 5 }
+            ]
+          },
+          {
+            id: "touch_ash",
+            label: "摸一下灰（不祥与你对视）",
+            ops: [
+              { op: "setFlag", flag: "cursed" },
+              { op: "advanceTime", min: 2 }
+            ]
+          },
+          {
+            id: "leave",
+            label: "不碰（你不想打扰这里）",
+            ops: [{ op: "advanceTime", min: 1 }]
+          }
+        ]
+      },
+      ops: []
     },
     shrine_guardian: {
       at: "old_shrine",
@@ -268,6 +335,105 @@ export const DATA = {
             id: "leave",
             label: "摇摇头离开",
             ops: [{ op: "advanceTime", min: 5 }]
+          }
+        ]
+      },
+      ops: []
+    }
+    ,
+
+    village_homecoming_forest: {
+      at: "village",
+      onArrive: true,
+      from: ["forest_path"],
+      once: true,
+      priority: 9,
+      requirements: { flags: ["has_firepit"] },
+      text: ["你回到村口，几个熟面孔围上来。\"外头怎么样？\""],
+      prompt: {
+        title: "归村",
+        choices: [
+          {
+            id: "share_food",
+            label: "把你见到的告诉他们（换一顿热饭）",
+            ops: [
+              { op: "gainItem", item: "onigiri", qty: 1 },
+              { op: "advanceTime", min: 5 }
+            ]
+          },
+          {
+            id: "ask_herbs",
+            label: "问他们要点草药（以备不测）",
+            ops: [
+              { op: "gainItem", item: "herbs", qty: 1 },
+              { op: "advanceTime", min: 5 }
+            ]
+          },
+          {
+            id: "stay_silent",
+            label: "含糊其辞，早点回屋",
+            ops: [{ op: "advanceTime", min: 2 }]
+          }
+        ]
+      },
+      ops: []
+    },
+
+    village_homecoming_cursed: {
+      at: "village",
+      onArrive: true,
+      from: ["abandoned_mine", "old_shrine", "forest_path"],
+      once: true,
+      priority: 10,
+      requirements: { flags: ["cursed"] },
+      text: ["你一踏进村子，火堆旁的老人就皱起眉：\"你身上带着不祥。\""],
+      prompt: {
+        title: "不祥",
+        choices: [
+          {
+            id: "cleanse",
+            label: "请他驱散不祥（花 6 钱）",
+            requires: { gold: 6 },
+            ops: [
+              { op: "spendGold", amt: 6 },
+              { op: "clearFlag", flag: "cursed" },
+              { op: "heal", amt: 8 },
+              { op: "advanceTime", min: 10 }
+            ]
+          },
+          {
+            id: "refuse",
+            label: "拒绝（你还想带着它走一段）",
+            ops: [{ op: "advanceTime", min: 2 }]
+          }
+        ]
+      },
+      ops: []
+    },
+
+    village_homecoming_cleansed: {
+      at: "village",
+      onArrive: true,
+      from: ["old_shrine"],
+      once: true,
+      priority: 8,
+      requirements: { flags: ["shrine_cleansed"] },
+      text: ["村里有人点起灯笼。\"神社那边……安静了？\""],
+      prompt: {
+        title: "灯火",
+        choices: [
+          {
+            id: "accept",
+            label: "收下他们递来的饭团",
+            ops: [
+              { op: "gainItem", item: "onigiri", qty: 2 },
+              { op: "advanceTime", min: 5 }
+            ]
+          },
+          {
+            id: "leave",
+            label: "摇头（你只想尽快上路）",
+            ops: [{ op: "advanceTime", min: 1 }]
           }
         ]
       },

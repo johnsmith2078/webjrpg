@@ -24,7 +24,7 @@ export function loadState() {
 
 export function loadOrInitState() {
   const s = loadState();
-  if (s && s.version === 5) return s;
+  if (s && s.version === 7) return s;
   // seed from URL ?seed=...
   const url = new URL(window.location.href);
   const seedParam = url.searchParams.get("seed") || "";

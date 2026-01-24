@@ -67,6 +67,14 @@ export function applyOps(state, rng, ops, lines) {
     if (op.op === "advanceTime") {
       state.timeMin += Number(op.min || 0);
     }
+    if (op.op === "heal") {
+      const amt = Number(op.amt || 0);
+      if (amt > 0) {
+        const before = Number(state.player.hp || 0);
+        state.player.hp = Math.min(Number(state.player.maxHp || 0), before + amt);
+        lines.push({ id: nowId(), type: "system", text: `恢复 ${state.player.hp - before} 点体力。` });
+      }
+    }
     if (op.op === "startCombat") {
       startCombat = op.enemy;
     }
@@ -83,8 +91,9 @@ export function rollEventId(state, rng) {
   const priorityOnce = [];
   for (const [id, ev] of Object.entries(DATA.events)) {
     if (ev.at !== state.location) continue;
-    if (ev.requirements && ev.requirements.flags) {
-      if (!hasAllFlags(state, ev.requirements.flags)) continue;
+    if (ev.requirements) {
+      const check = checkRequirements(state, ev.requirements);
+      if (!check.ok) continue;
     }
 
     if (ev.once) {

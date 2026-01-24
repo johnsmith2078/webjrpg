@@ -4,7 +4,7 @@ import { DATA } from "./data.js";
 export function createInitialState(seedInput) {
   const seed = normalizeSeed(seedInput);
   return {
-    version: 5,
+    version: 7,
     seed,
     rng: { s: seed >>> 0 },
     timeMin: 0,

@@ -103,6 +103,12 @@
 - 产出：`bound_charm x1`
 - 结果：设置 `charm_bound = true`
 
+战斗用途（当前实现）：
+- 在战斗中使用 `bound_charm` 会：
+  - 直接造成少量伤害（符火灼伤 1-3）
+  - 并让敌人晕眩 1 回合（敌人跳过一次攻击）
+  - 目的：不是“白白浪费一回合”，而是制造明显的节奏优势（尤其是 boss）。
+
 3) 幽火遭遇（可选）
 - `shrine_wisp`：战斗 `oni_wisp`
 
@@ -125,7 +131,51 @@
 - 结果：设置 `has_iron_blade = true`，并提升 `atk`
 - 战斗收益：
   - 普攻对 `oni_wisp` / `shrine_guardian` 额外 +1 伤害
-  - 解锁战斗技能：`skill:purify`（破邪斩；对灵体/守护者伤害更高，并可清除 `cursed`）
+- 解锁战斗技能：`skill:purify`（破邪斩；对灵体/守护者伤害更高，并可清除 `cursed`）
+
+---
+
+## 2.6 回村特殊事件（A Dark Room 的“回家节拍”）
+
+回到 `village`（从外面回来）会触发一次性特殊事件，用来打破单调刷素材，并把叙事塞进循环里。
+
+触发方式：旅行抵达 `village` 时自动触发（不是靠“探索”随机刷）。
+
+### 事件列表（event_id）
+
+- `village_homecoming_forest`
+  - 触发：从 `forest_path` 回到 `village`（once）且已有 `has_firepit`
+  - 内容：村口围问“外头怎么样？”
+  - 选择：换一顿热饭 / 要点草药 / 含糊其辞
+
+- `village_homecoming_cursed`
+  - 触发：带着 `cursed` 回村（once）
+  - 内容：老人指出你身上“不祥”
+  - 选择：花钱驱散并治疗 / 拒绝
+
+- `village_homecoming_cleansed`
+  - 触发：`shrine_cleansed` 后从 `old_shrine` 回村（once）
+  - 内容：村里点灯，确认神社安静
+  - 选择：收下补给 / 直接上路
+
+---
+
+## 2.7 新增的“路上/神社”选择事件（减少单调）
+
+这些事件不是为了拉长流程，而是让玩家每一段路都有“决策点”。
+
+- `forest_fork`（`forest_path`）
+  - 描述：杉径岔路
+  - 选择：
+    - 近路：省时间，但直接触发一次战斗
+    - 远路：多花时间，但稳定获得草药
+
+- `shrine_offering`（`old_shrine`）
+  - 描述：供台与灰
+  - 选择：
+    - 供饭团换缚符（把恢复资源转成战斗控制资源）
+    - 摸灰（获得 `cursed`，后续可被“破邪斩”清除）
+    - 离开
 
 ### Act 4：守护者与遗物（`old_shrine`）
 

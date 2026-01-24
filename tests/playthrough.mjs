@@ -52,6 +52,12 @@ function resolvePromptIfAny(game) {
   game.handleChoice("prompt:close");
 }
 
+function travelTo(game, id) {
+  game.handleChoice("travel");
+  game.handleChoice(`travel:${id}`);
+  resolvePromptIfAny(game);
+}
+
 function maybeHeal(game) {
   const s = game.getState();
   if (s.player.hp <= 10 && (s.inventory.onigiri || 0) > 0) {
@@ -156,8 +162,7 @@ function main() {
     60,
     "推进到 30 分钟"
   );
-  game.handleChoice("travel");
-  game.handleChoice("travel:forest_path");
+  travelTo(game, "forest_path");
   assert(game.getState().location === "forest_path", "应到达 forest_path");
 
   // 3) 在杉径刷苦草
@@ -174,8 +179,7 @@ function main() {
   );
 
   // 4) 前往古神社并刷纸符
-  game.handleChoice("travel");
-  game.handleChoice("travel:old_shrine");
+  travelTo(game, "old_shrine");
   assert(game.getState().location === "old_shrine", "应到达 old_shrine");
 
   doUntil(
@@ -213,8 +217,7 @@ function main() {
     "推进到 90 分钟"
   );
 
-  game.handleChoice("travel");
-  game.handleChoice("travel:abandoned_mine");
+  travelTo(game, "abandoned_mine");
   assert(game.getState().location === "abandoned_mine", "应到达 abandoned_mine");
 
   doUntil(
@@ -257,10 +260,7 @@ function main() {
   assert(countItem(game.getState(), "iron_blade") >= 1, "应获得 道具：铁刃");
 
   // 8) 回到古神社刷出守护者并击败
-  game.handleChoice("travel");
-  game.handleChoice("travel:forest_path");
-  game.handleChoice("travel");
-  game.handleChoice("travel:old_shrine");
+  travelTo(game, "old_shrine");
 
   assert(game.getState().location === "old_shrine", "此时应在 old_shrine");
   assert(game.getState().flags.charm_bound, "此时应有 charm_bound");
@@ -290,8 +290,7 @@ function main() {
   assert(countItem(game.getState(), "shrine_relic") >= 1, "击败神社守应掉落 神社遗物");
 
   // 9) 前往山口并触发结局
-  game.handleChoice("travel");
-  game.handleChoice("travel:mountain_pass");
+  travelTo(game, "mountain_pass");
   assert(game.getState().location === "mountain_pass", "应到达 mountain_pass");
 
   // 触发结局事件（会弹出 prompt），选择封印结局。

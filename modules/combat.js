@@ -72,7 +72,11 @@ export function resolveCombatAction(state, rng, action) {
       state.inventory[itemId] = qty - 1;
       if (state.inventory[itemId] <= 0) delete state.inventory[itemId];
       c.enemyStun = Math.max(c.enemyStun, turns);
-      log.push({ id: nowId(), type: "rare", text: `你掷出「${item.name}」。敌人动作一滞。` });
+      // Make this meaningfully better than a pure "skip".
+      // It denies one enemy action AND deals a bit of direct damage.
+      const charmDmg = 1 + rng.nextInt(0, 2);
+      c.enemyHp = clamp(c.enemyHp - charmDmg, 0, 9999);
+      log.push({ id: nowId(), type: "rare", text: `你掷出「${item.name}」。符火灼伤 ${charmDmg} 点，敌人动作一滞。` });
     } else if (heal > 0) {
       state.inventory[itemId] = qty - 1;
       if (state.inventory[itemId] <= 0) delete state.inventory[itemId];

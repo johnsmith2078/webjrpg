@@ -3,6 +3,7 @@ import { DATA } from "./data.js";
 import { deriveUnlocked, createInitialState } from "./state.js";
 import { saveState } from "./save.js";
 import { rollEventId, applyEvent, applyOps } from "./events.js";
+import { checkRequirements } from "./events.js";
 import { startCombat, isInCombat, resolveCombatAction } from "./combat.js";
 import { craft, listAvailableRecipes, canCraft } from "./crafting.js";
 import { locationTargets, travel } from "./world.js";
@@ -90,6 +91,14 @@ export function createGame({ state }) {
 
   function doTravel(toId) {
     if (s.gameOver) return;
+    if (s.prompt) {
+      s.log.push({ id: nowId(), type: "system", text: "你还没做出选择。" });
+      persist();
+      api.notify();
+      return;
+    }
+
+    const fromId = s.location;
     const res = travel(s, toId);
     if (!res.ok) {
       s.log.push({ id: nowId(), type: "system", text: res.reason });
@@ -97,10 +106,50 @@ export function createGame({ state }) {
       const loc = DATA.locations[s.location];
       s.log.push({ id: nowId(), type: "narration", text: `你抵达：${loc.name}` });
       s.log.push({ id: nowId(), type: "narration", text: loc.desc });
+
+      // A Dark Room-ish: returning home can trigger special beats.
+      if (s.location === "village") {
+        triggerArrivalEvents(fromId, s.location);
+      }
     }
     s.ui.mode = "main";
     persist();
     api.notify();
+  }
+
+  function triggerArrivalEvents(fromId, toId) {
+    const candidates = [];
+    for (const [eventId, ev] of Object.entries(DATA.events)) {
+      if (!ev || typeof ev !== "object") continue;
+      if (!ev.onArrive) continue;
+      if (ev.at !== toId) continue;
+      if (Array.isArray(ev.from) && ev.from.length > 0 && !ev.from.includes(fromId)) continue;
+
+      if (ev.requirements) {
+        const check = checkRequirements(s, ev.requirements);
+        if (!check.ok) continue;
+      }
+
+      if (ev.once) {
+        const seen = s.seenEvents && typeof s.seenEvents === "object" ? Number(s.seenEvents[eventId] || 0) : 0;
+        if (seen > 0) continue;
+      }
+
+      candidates.push({ eventId, priority: Number(ev.priority || 0) });
+    }
+
+    if (candidates.length === 0) return;
+    candidates.sort((a, b) => (b.priority - a.priority) || a.eventId.localeCompare(b.eventId));
+    const picked = candidates[0].eventId;
+
+    const res = applyEvent(s, rng, picked);
+    s.log.push(...res.lines);
+    if (res.startCombat) startCombat(s, res.startCombat);
+    if (res.prompt) s.prompt = res.prompt;
+    if (res.endGame) {
+      s.gameOver = true;
+      s.log.push({ id: nowId(), type: "rare", text: "（终）" });
+    }
   }
 
   function doCraft(recipeId) {
