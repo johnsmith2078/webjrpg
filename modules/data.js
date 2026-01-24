@@ -98,6 +98,8 @@ export const DATA = {
     village_rumor: {
       at: "village",
       w: 2,
+      once: true,
+      priority: 5,
       text: ["老猎人压低声音：\"神社又醒了。\""],
       ops: [{ op: "setFlag", flag: "heard_rumor_shrine" }]
     },
@@ -153,6 +155,8 @@ export const DATA = {
     shrine_guardian: {
       at: "old_shrine",
       w: 1,
+      once: true,
+      priority: 10,
       requirements: { flags: ["charm_bound", "has_iron_blade"] },
       text: ["地面震动。石与祈愿凝成的守护者踏前一步。"],
       ops: [
@@ -172,6 +176,8 @@ export const DATA = {
     pass_ending: {
       at: "mountain_pass",
       w: 5,
+      once: true,
+      priority: 10,
       requirements: { flags: ["shrine_cleansed"] },
       text: ["山口处，雾终于断开。", "大山像是松了口气。", "山下某处，铃声回应。"],
       ops: [{ op: "endGame" }]

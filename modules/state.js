@@ -4,7 +4,7 @@ import { DATA } from "./data.js";
 export function createInitialState(seedInput) {
   const seed = normalizeSeed(seedInput);
   return {
-    version: 2,
+    version: 3,
     seed,
     rng: { s: seed >>> 0 },
     timeMin: 0,
@@ -22,6 +22,8 @@ export function createInitialState(seedInput) {
     },
     inventory: {},
     flags: {},
+
+    seenEvents: {},
 
     ui: {
       mode: "main", // main | travel | craft | inventory | settings

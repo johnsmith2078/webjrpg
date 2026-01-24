@@ -70,8 +70,9 @@ export function resolveCombatAction(state, rng, action) {
   // enemy defeated
   if (c.enemyHp <= 0) {
     log.push({ id: nowId(), type: "narration", text: `「${enemyName}」倒下了。` });
+    const defeatedId = c.enemyId;
     state.combat = null;
-    awardVictory(state, e, log);
+    awardVictory(state, defeatedId, e, log);
     state.log.push(...log);
     return { ended: true, won: true, fled: false };
   }
@@ -94,7 +95,7 @@ export function resolveCombatAction(state, rng, action) {
   return { ended: false };
 }
 
-function awardVictory(state, enemy, log) {
+function awardVictory(state, enemyId, enemy, log) {
   const gold = Number(enemy.gold || 0);
   if (gold) {
     state.player.gold += gold;
@@ -109,7 +110,7 @@ function awardVictory(state, enemy, log) {
       log.push({ id: nowId(), type: "system", text: `获得：${name} x${q}` });
     }
   }
-  if (enemy === DATA.enemies.shrine_guardian) {
+  if (enemyId === "shrine_guardian") {
     state.flags.shrine_cleansed = true;
     log.push({ id: nowId(), type: "rare", text: "神社的铃声终于回到了正音。" });
   }
