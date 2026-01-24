@@ -1,0 +1,15 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>State Save/Load Test</title>
+<pre id="out"></pre>
+<script type="module">
+  import { createInitialState } from "../modules/state.js";
+  import { exportState, importState } from "../modules/save.js";
+
+  const out = document.getElementById("out");
+  const s1 = createInitialState("hello");
+  s1.flags.x = true;
+  const dump = exportState(s1);
+  const s2 = importState(dump);
+  out.textContent = JSON.stringify({ ok: s2.flags.x === true && s2.seed === s1.seed }, null, 2);
+</script>

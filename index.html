@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>杉雾中的烛火</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif:opsz,wght@8..144,400;8..144,600;8..144,700&family=Noto+Serif+SC:wght@400;600;700&family=Source+Code+Pro:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+
+  <body>
+    <a class="skip-link" href="#main">跳到故事</a>
+
+    <div id="app" class="app" data-theme="washi">
+      <header class="topbar" role="banner">
+        <div class="topbar__left">
+          <p class="kicker" id="gameKicker">传统日式角色扮演文字冒险</p>
+          <h1 class="title" id="gameTitle">杉雾中的烛火</h1>
+        </div>
+
+        <div class="topbar__right" aria-label="游戏操作">
+          <button
+            type="button"
+            class="iconbtn"
+            id="inventoryToggle"
+            aria-haspopup="dialog"
+            aria-controls="inventoryDrawer"
+            aria-expanded="false"
+          >
+            <span class="iconbtn__label">行囊</span>
+            <span class="iconbtn__meta" id="inventoryCount" aria-label="物品数量">0</span>
+          </button>
+
+          <button
+            type="button"
+            class="iconbtn"
+            id="settingsToggle"
+            aria-haspopup="dialog"
+            aria-controls="settingsModal"
+          >
+            <span class="iconbtn__label">设置</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="frame">
+        <main id="main" class="main" role="main" aria-labelledby="sceneTitle">
+          <section class="scene" aria-label="场景">
+            <div class="scene__head">
+              <h2 class="scene__title" id="sceneTitle">...</h2>
+              <div class="scene__status" id="status" aria-label="状态">
+                <span class="chip" id="statusDay" data-kind="time">
+                  <span class="chip__k">天数</span>
+                  <span class="chip__v">1</span>
+                </span>
+                <span class="chip" id="statusHP" data-kind="hp">
+                  <span class="chip__k">生命</span>
+                  <span class="chip__v">0/0</span>
+                </span>
+                <span class="chip" id="statusGold" data-kind="coin">
+                  <span class="chip__k">金币</span>
+                  <span class="chip__v">0</span>
+                </span>
+              </div>
+            </div>
+
+            <div class="logwrap" aria-label="故事记录">
+              <ol
+                id="log"
+                class="log"
+                aria-live="polite"
+                aria-relevant="additions text"
+                aria-atomic="false"
+              ></ol>
+              <div class="logfade" aria-hidden="true"></div>
+            </div>
+          </section>
+        </main>
+
+        <aside class="rail" aria-label="选项" id="choiceRail">
+          <div class="rail__inner">
+            <div class="rail__head">
+              <h3 class="rail__title" id="choicesTitle">选择</h3>
+              <p class="rail__hint" id="choicesHint">你的下一句话，将改变世界。</p>
+            </div>
+
+            <div class="choices" id="choices" role="list" aria-describedby="choicesHint"></div>
+
+            <div class="rail__footer">
+              <p class="rail__kbd" aria-label="键盘提示">
+                <span class="rail__kbdkey">1</span>
+                <span class="rail__kbdkey">2</span>
+                <span class="rail__kbdkey">3</span>
+                <span class="rail__kbdsep">= 选择</span>
+              </p>
+              <button type="button" class="textbtn" id="scrollToLatest">跳到最新</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <div id="backdrop" class="backdrop" hidden></div>
+
+      <aside
+        id="inventoryDrawer"
+        class="drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="inventoryTitle"
+        aria-describedby="inventoryDesc"
+        hidden
+      >
+        <div class="drawer__head">
+          <h2 class="drawer__title" id="inventoryTitle">行囊</h2>
+          <button type="button" class="iconbtn iconbtn--ghost" id="inventoryClose">
+            <span class="iconbtn__label">关闭</span>
+          </button>
+        </div>
+
+        <p class="drawer__desc" id="inventoryDesc">你携带的东西，会改变故事的回应。</p>
+
+        <div class="drawer__body">
+          <ul class="inv" id="inventoryList" aria-label="物品">
+            <li class="inv__empty" id="inventoryEmpty">空无一物。路很轻。</li>
+          </ul>
+        </div>
+
+        <div class="drawer__foot" aria-label="背包操作">
+          <button type="button" class="btn" id="useSelected" disabled>使用</button>
+          <button type="button" class="btn btn--quiet" id="dropSelected" disabled>丢弃</button>
+        </div>
+      </aside>
+
+      <dialog id="settingsModal" class="modal" aria-labelledby="settingsTitle">
+        <form method="dialog" class="modal__panel" id="settingsForm">
+          <div class="modal__head">
+            <h2 class="modal__title" id="settingsTitle">设置</h2>
+            <button type="submit" class="iconbtn iconbtn--ghost" id="settingsClose" value="close">
+              <span class="iconbtn__label">关闭</span>
+            </button>
+          </div>
+
+          <div class="modal__body">
+            <fieldset class="field" aria-label="文字与动效">
+              <legend class="field__legend">文字与动效</legend>
+
+              <label class="row" for="textSpeed">
+                <span class="row__label">文字速度</span>
+                <span class="row__control">
+                  <input id="textSpeed" name="textSpeed" type="range" min="0" max="100" value="55" />
+                </span>
+              </label>
+
+              <label class="row row--toggle" for="reduceMotion">
+                <span class="row__label">减少动效</span>
+                <span class="row__control">
+                  <input id="reduceMotion" name="reduceMotion" type="checkbox" />
+                </span>
+              </label>
+
+              <label class="row row--toggle" for="highContrast">
+                <span class="row__label">高对比度</span>
+                <span class="row__control">
+                  <input id="highContrast" name="highContrast" type="checkbox" />
+                </span>
+              </label>
+            </fieldset>
+
+            <fieldset class="field" aria-label="存档">
+              <legend class="field__legend">存档</legend>
+              <p class="field__hint">导入/导出是可复现的（包含种子与随机状态）。</p>
+              <div class="actions">
+                <button type="button" class="btn btn--quiet" id="exportSave">导出存档</button>
+                <button type="button" class="btn btn--quiet" id="importSave">导入存档</button>
+                <button type="button" class="btn btn--danger" id="resetGame">重置</button>
+              </div>
+            </fieldset>
+          </div>
+
+          <div class="modal__foot">
+            <button type="submit" class="btn" value="close">完成</button>
+          </div>
+        </form>
+      </dialog>
+
+      <template id="logItemTemplate">
+        <li class="log__item">
+          <p class="log__text"></p>
+        </li>
+      </template>
+
+      <template id="choiceTemplate">
+        <button type="button" class="choice">
+          <span class="choice__label"></span>
+          <span class="choice__tag"></span>
+        </button>
+      </template>
+
+      <template id="inventoryItemTemplate">
+        <li class="inv__item">
+          <button type="button" class="inv__btn">
+            <span class="inv__name"></span>
+            <span class="inv__meta"></span>
+          </button>
+        </li>
+      </template>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
