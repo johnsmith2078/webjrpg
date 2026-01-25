@@ -56,36 +56,6 @@
           <section class="scene" aria-label="场景">
             <div class="scene__head">
               <h2 class="scene__title" id="sceneTitle">...</h2>
-              <div class="scene__status" id="status" aria-label="状态">
-                <span class="chip" id="statusDay" data-kind="time">
-                  <span class="chip__k">天数</span>
-                  <span class="chip__v">1</span>
-                </span>
-                <span class="chip" id="statusHP" data-kind="hp">
-                  <span class="chip__k">生命</span>
-                  <span class="chip__v">0/0</span>
-                </span>
-                <span class="chip" id="statusMP" data-kind="mp">
-                  <span class="chip__k">法力</span>
-                  <span class="chip__v">0/0</span>
-                </span>
-                <span class="chip" id="statusEN" data-kind="en">
-                  <span class="chip__k">能量</span>
-                  <span class="chip__v">0/0</span>
-                </span>
-                <span class="chip" id="statusATK" data-kind="atk">
-                  <span class="chip__k">攻击</span>
-                  <span class="chip__v">0</span>
-                </span>
-                <span class="chip" id="statusDEF" data-kind="def">
-                  <span class="chip__k">防御</span>
-                  <span class="chip__v">0</span>
-                </span>
-                <span class="chip" id="statusGold" data-kind="coin">
-                  <span class="chip__k">金币</span>
-                  <span class="chip__v">0</span>
-                </span>
-              </div>
             </div>
 
             <div class="logwrap" aria-label="故事记录">
@@ -106,6 +76,37 @@
             <div class="rail__head">
               <h3 class="rail__title" id="choicesTitle">选择</h3>
               <p class="rail__hint" id="choicesHint">你的下一句话，将改变世界。</p>
+            </div>
+
+            <div class="scene__status rail__status" id="status" aria-label="状态">
+              <span class="chip" id="statusDay" data-kind="time">
+                <span class="chip__k">天数</span>
+                <span class="chip__v">1</span>
+              </span>
+              <span class="chip" id="statusHP" data-kind="hp">
+                <span class="chip__k">生命</span>
+                <span class="chip__v">0/0</span>
+              </span>
+              <span class="chip" id="statusMP" data-kind="mp">
+                <span class="chip__k">法力</span>
+                <span class="chip__v">0/0</span>
+              </span>
+              <span class="chip" id="statusEN" data-kind="en">
+                <span class="chip__k">能量</span>
+                <span class="chip__v">0/0</span>
+              </span>
+              <span class="chip" id="statusATK" data-kind="atk">
+                <span class="chip__k">攻击</span>
+                <span class="chip__v">0</span>
+              </span>
+              <span class="chip" id="statusDEF" data-kind="def">
+                <span class="chip__k">防御</span>
+                <span class="chip__v">0</span>
+              </span>
+              <span class="chip" id="statusGold" data-kind="coin">
+                <span class="chip__k">金币</span>
+                <span class="chip__v">0</span>
+              </span>
             </div>
 
             <div class="choices" id="choices" role="list" aria-describedby="choicesHint"></div>

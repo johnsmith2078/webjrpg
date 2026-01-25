@@ -220,6 +220,10 @@ textarea {
   color: var(--ink-3);
 }
 
+.rail__status {
+  margin-top: 10px;
+}
+
 .chip {
   display: inline;
   border: 0;
