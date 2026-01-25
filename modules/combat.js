@@ -17,11 +17,15 @@ export function startCombat(state, enemyId) {
     enemyStun: 0,
     usedPurify: false,
     skillCooldowns: {},
+    enemyAtkDown: 0,
+    swarmDamage: 0,
     statusEffects: {
       focus: 0,
       ward: 0,
       stealth: 0,
-      crit_boost: 0
+      crit_boost: 0,
+      weaken: 0,
+      swarm: 0
     }
   };
   
@@ -66,6 +70,7 @@ export function resolveCombatAction(state, rng, action) {
   c.defending = false;
 
   for (const [effect, duration] of Object.entries(c.statusEffects)) {
+    if (effect === "swarm") continue;
     if (duration > 0) {
       c.statusEffects[effect] = duration - 1;
     }
@@ -156,6 +161,13 @@ export function resolveCombatAction(state, rng, action) {
     log.push({ id: nowId(), type: "system", text: "请选择：攻击 / 防御 / 使用道具 / 逃跑" });
   }
 
+  if (c.statusEffects.swarm > 0 && c.enemyHp > 0) {
+    const tick = Math.max(1, Number(c.swarmDamage || 1));
+    c.enemyHp = clamp(c.enemyHp - tick, 0, 9999);
+    c.statusEffects.swarm = Math.max(0, c.statusEffects.swarm - 1);
+    log.push({ id: nowId(), type: "rare", text: `电弧蜂群撕咬，造成 ${tick} 点伤害。` });
+  }
+
   // enemy defeated
   if (c.enemyHp <= 0) {
     log.push({ id: nowId(), type: "narration", text: `「${enemyName}」倒下了。` });
@@ -189,7 +201,9 @@ export function resolveCombatAction(state, rng, action) {
   const bonusDef = c.defending ? 2 : 0;
   const cursedPenalty = state.flags.cursed ? 1 : 0;
   const wardReduction = c.statusEffects.ward > 0 ? Math.floor(e.atk * 0.5) : 0;
-  const enemyDmg = Math.max(1, damage(e.atk, effDef + bonusDef, rng, cursedPenalty) - wardReduction);
+  const atkDebuff = c.statusEffects.weaken > 0 ? Number(c.enemyAtkDown || 0) : 0;
+  const enemyAtk = Math.max(1, Number(e.atk || 0) - atkDebuff);
+  const enemyDmg = Math.max(1, damage(enemyAtk, effDef + bonusDef, rng, cursedPenalty) - wardReduction);
   state.player.hp = clamp(state.player.hp - enemyDmg, 0, Number(derived.maxHp || state.player.maxHp || 20));
   
   if (c.statusEffects.ward > 0) {
@@ -305,18 +319,44 @@ function handleSkill(state, skillId, rng, log) {
     const dmg = damage(baseAtk, e.def, rng, 0);
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     log.push({ id: nowId(), type: "rare", text: `强力击！你造成了 ${dmg} 点伤害。` });
+  } else if (skillId === "war_cry") {
+    const duration = Number(skill.duration || 2);
+    const atkDown = Number(skill.atk_down || 1);
+    c.statusEffects.weaken = Math.max(c.statusEffects.weaken, duration);
+    c.enemyAtkDown = Math.max(Number(c.enemyAtkDown || 0), atkDown);
+    log.push({ id: nowId(), type: "rare", text: "你怒吼震慑，敌人的气势被压制了。" });
   } else if (skillId === "fireball") {
     const e = DATA.enemies[c.enemyId];
     const base = Number(skill.base_damage || 8);
     const dmg = Math.max(1, base + rng.nextInt(0, 2) - Math.floor(Number(e.def || 0) / 2));
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     log.push({ id: nowId(), type: "rare", text: `火球术！你造成了 ${dmg} 点魔法伤害。` });
+  } else if (skillId === "arcane_drain") {
+    const e = DATA.enemies[c.enemyId];
+    const base = Number(skill.base_damage || 6);
+    const dmg = Math.max(1, base + rng.nextInt(0, 2) - Math.floor(Number(e.def || 0) / 2));
+    c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
+    const derived = derivePlayerStats(state);
+    const maxMp = Number(derived.maxMp || state.player.maxMp || 0);
+    const restore = Math.min(Number(skill.mp_restore || 1) + Math.floor(dmg / 2), Math.max(0, maxMp - Number(state.player.mp || 0)));
+    if (restore > 0) {
+      state.player.mp = Number(state.player.mp || 0) + restore;
+      log.push({ id: nowId(), type: "rare", text: `奥术汲取！你造成了 ${dmg} 点伤害，并回复 ${restore} 点法力。` });
+    } else {
+      log.push({ id: nowId(), type: "rare", text: `奥术汲取！你造成了 ${dmg} 点伤害。` });
+    }
   } else if (skillId === "deploy_turret") {
     const e = DATA.enemies[c.enemyId];
     const base = Number(skill.base_damage || 5);
     const dmg = Math.max(1, base + rng.nextInt(0, 2) - Number(e.def || 0));
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     log.push({ id: nowId(), type: "rare", text: `炮塔齐射！你造成了 ${dmg} 点伤害。` });
+  } else if (skillId === "shock_swarm") {
+    const duration = Number(skill.duration || 2);
+    const tick = Number(skill.tick_damage || 1);
+    c.statusEffects.swarm = Math.max(c.statusEffects.swarm, duration);
+    c.swarmDamage = Math.max(Number(c.swarmDamage || 0), tick);
+    log.push({ id: nowId(), type: "rare", text: "你释放电弧蜂群，缠绕着敌人。" });
   }
 
   if (skill.cooldown > 0) {

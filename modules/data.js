@@ -389,6 +389,7 @@ export const DATA = {
             ops: [
               { op: "setFlag", flag: "class_warrior" },
               { op: "setFlag", flag: "skills_learned_power_strike" },
+              { op: "setFlag", flag: "skills_learned_war_cry" },
               { op: "gainItem", item: "iron_ore", qty: 1 },
               { op: "advanceTime", min: 5 }
             ]
@@ -399,6 +400,7 @@ export const DATA = {
             ops: [
               { op: "setFlag", flag: "class_mage" },
               { op: "setFlag", flag: "skills_learned_fireball" },
+              { op: "setFlag", flag: "skills_learned_arcane_drain" },
               { op: "gainItem", item: "mana_crystal", qty: 1 },
               { op: "advanceTime", min: 5 }
             ]
@@ -409,6 +411,7 @@ export const DATA = {
             ops: [
               { op: "setFlag", flag: "class_engineer" },
               { op: "setFlag", flag: "skills_learned_deploy_turret" },
+              { op: "setFlag", flag: "skills_learned_shock_swarm" },
               { op: "gainItem", item: "scrap_metal", qty: 1 },
               { op: "advanceTime", min: 5 }
             ]
@@ -1367,6 +1370,33 @@ export const DATA = {
       base_damage: 6,
       cooldown: 3,
       enCost: 4
+    },
+    war_cry: {
+      name: "战吼",
+      description: "震慑敌人，降低其攻击力",
+      effects: ["weaken"],
+      atk_down: 2,
+      duration: 2,
+      cooldown: 3,
+      cost: 1
+    },
+    arcane_drain: {
+      name: "奥术汲取",
+      description: "汲取敌人灵能，造成伤害并回复法力",
+      effects: ["magic_drain"],
+      base_damage: 7,
+      mp_restore: 2,
+      cooldown: 2,
+      mpCost: 3
+    },
+    shock_swarm: {
+      name: "电弧蜂群",
+      description: "释放持续电弧，回合末追加伤害",
+      effects: ["shock_swarm"],
+      tick_damage: 2,
+      duration: 3,
+      cooldown: 3,
+      enCost: 3
     }
   }
 };

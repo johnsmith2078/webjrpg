@@ -582,11 +582,20 @@ export function createGame({ state }) {
       if (s.flags.skills_learned_power_strike && (!s.combat.skillCooldowns?.power_strike || s.combat.skillCooldowns.power_strike === 0)) {
         skillChoices.push({ id: "skill:power_strike", label: "强力击", kind: "combat" });
       }
+      if (s.flags.skills_learned_war_cry && (!s.combat.skillCooldowns?.war_cry || s.combat.skillCooldowns.war_cry === 0)) {
+        skillChoices.push({ id: "skill:war_cry", label: "战吼", kind: "combat" });
+      }
       if (s.flags.skills_learned_fireball && (!s.combat.skillCooldowns?.fireball || s.combat.skillCooldowns.fireball === 0)) {
         skillChoices.push({ id: "skill:fireball", label: "火球术", kind: "combat" });
       }
+      if (s.flags.skills_learned_arcane_drain && (!s.combat.skillCooldowns?.arcane_drain || s.combat.skillCooldowns.arcane_drain === 0)) {
+        skillChoices.push({ id: "skill:arcane_drain", label: "奥术汲取", kind: "combat" });
+      }
       if (s.flags.skills_learned_deploy_turret && (!s.combat.skillCooldowns?.deploy_turret || s.combat.skillCooldowns.deploy_turret === 0)) {
         skillChoices.push({ id: "skill:deploy_turret", label: "部署炮塔", kind: "combat" });
+      }
+      if (s.flags.skills_learned_shock_swarm && (!s.combat.skillCooldowns?.shock_swarm || s.combat.skillCooldowns.shock_swarm === 0)) {
+        skillChoices.push({ id: "skill:shock_swarm", label: "电弧蜂群", kind: "combat" });
       }
 
        return [
