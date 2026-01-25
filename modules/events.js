@@ -108,7 +108,7 @@ export function rollEventId(state, rng) {
   const weighted = [];
   const priorityOnce = [];
   for (const [id, ev] of Object.entries(DATA.events)) {
-    if (ev.at !== state.location) continue;
+    if (ev.at !== state.location && ev.at !== "random") continue;
     if (ev.requirements) {
       const check = checkRequirements(state, ev.requirements);
       if (!check.ok) continue;

@@ -51,6 +51,8 @@ export function createGame({ state }) {
     if (!evId) {
       s.log.push({ id: nowId(), type: "system", text: "四下无声。" });
       s.timeMin += 10;
+      trackExplorationProgress(s);
+      checkQuestProgress(s);
       persist();
       api.notify();
       return;
@@ -69,16 +71,31 @@ export function createGame({ state }) {
       s.gameOver = true;
       s.log.push({ id: nowId(), type: "rare", text: "（终）" });
     }
+    trackExplorationProgress(s);
+    checkQuestProgress(s);
     persist();
     api.notify();
   }
 
   function rest() {
     if (s.gameOver) return;
-    const before = s.player.hp;
+    const beforeHp = s.player.hp;
+    const beforeMp = Number(s.player.mp || 0);
+    const beforeEn = Number(s.player.en || 0);
+
     s.player.hp = Math.min(s.player.maxHp, s.player.hp + 8);
+    if (s.player.maxMp !== undefined) s.player.mp = Math.min(s.player.maxMp, Number(s.player.mp || 0) + 5);
+    if (s.player.maxEn !== undefined) s.player.en = Math.min(s.player.maxEn, Number(s.player.en || 0) + 5);
     s.timeMin += 30;
-    s.log.push({ id: nowId(), type: "system", text: `你稍作休息，恢复了 ${s.player.hp - before} 点体力。` });
+
+    const healedHp = s.player.hp - beforeHp;
+    const healedMp = Number(s.player.mp || 0) - beforeMp;
+    const healedEn = Number(s.player.en || 0) - beforeEn;
+    const parts = [];
+    if (healedHp > 0) parts.push(`体力 +${healedHp}`);
+    if (healedMp > 0) parts.push(`法力 +${healedMp}`);
+    if (healedEn > 0) parts.push(`能量 +${healedEn}`);
+    s.log.push({ id: nowId(), type: "system", text: `你稍作休息。${parts.join("，") || "你感觉好多了。"}` });
     persist();
     api.notify();
   }
@@ -250,6 +267,15 @@ export function createGame({ state }) {
       if (s.flags.skills_learned_stealth && (!s.combat.skillCooldowns?.stealth || s.combat.skillCooldowns.stealth === 0)) {
         skillChoices.push({ id: "skill:stealth", label: "隐身", kind: "combat" });
       }
+      if (s.flags.skills_learned_power_strike && (!s.combat.skillCooldowns?.power_strike || s.combat.skillCooldowns.power_strike === 0)) {
+        skillChoices.push({ id: "skill:power_strike", label: "强力击", kind: "combat" });
+      }
+      if (s.flags.skills_learned_fireball && (!s.combat.skillCooldowns?.fireball || s.combat.skillCooldowns.fireball === 0)) {
+        skillChoices.push({ id: "skill:fireball", label: "火球术", kind: "combat" });
+      }
+      if (s.flags.skills_learned_deploy_turret && (!s.combat.skillCooldowns?.deploy_turret || s.combat.skillCooldowns.deploy_turret === 0)) {
+        skillChoices.push({ id: "skill:deploy_turret", label: "部署炮塔", kind: "combat" });
+      }
 
       return [
         { id: "attack", label: "攻击", kind: "combat" },
@@ -271,6 +297,11 @@ export function createGame({ state }) {
             disabled = true;
             const reqs = [];
             if (c.requires.gold) reqs.push(`${c.requires.gold} 钱`);
+            if (c.requires.item) {
+              const q = typeof c.requires.qty === "number" ? c.requires.qty : 1;
+              const name = DATA.items[c.requires.item]?.name || c.requires.item;
+              reqs.push(`${name} x${q}`);
+            }
             if (c.requires.items) {
               for (const [id, qty] of Object.entries(c.requires.items)) {
                 const name = DATA.items[id]?.name || id;
@@ -437,9 +468,34 @@ export function createGame({ state }) {
     }
   }
   
+  function trackExplorationProgress(state) {
+    if (!state.quests) return;
+    const currentLocation = state.location;
+
+    for (const [questId, quest] of Object.entries(DATA.quests)) {
+      const questState = state.quests[questId];
+      if (!questState || !questState.started || questState.completed) continue;
+      if (!quest.objectives) continue;
+
+      if (!questState.progress) questState.progress = {};
+
+      for (const objective of quest.objectives) {
+        if (objective.type !== "explore") continue;
+        if (objective.location !== currentLocation) continue;
+        const objKey = `${questId}_${objective.type}_${objective.item || objective.location || objective.enemy}`;
+
+        const prev = Number(questState.progress[objKey]?.current || 0);
+        const next = prev + 1;
+        questState.progress[objKey] = { current: next, target: objective.count, complete: next >= objective.count };
+      }
+    }
+  }
+  
   function updateQuestObjectives(state, questId, quest) {
     const questState = state.quests[questId];
     if (!questState || !questState.started) return;
+
+    if (!questState.progress) questState.progress = {};
     
     let allComplete = true;
     
@@ -458,10 +514,9 @@ export function createGame({ state }) {
         complete = state.flags[`defeated_${objective.enemy}`] || false;
         questState.progress[objKey] = { current: complete ? 1 : 0, target: 1, complete };
       } else if (objective.type === "explore") {
-        complete = (state.quests[questId]?.progress?.[objKey]?.current || 0) >= objective.count;
-        if (!questState.progress[objKey]) {
-          questState.progress[objKey] = { current: 0, target: objective.count, complete };
-        }
+        const current = Number(questState.progress[objKey]?.current || 0);
+        complete = current >= objective.count;
+        questState.progress[objKey] = { current, target: objective.count, complete };
       }
       
       if (!complete) allComplete = false;

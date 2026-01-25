@@ -48,6 +48,16 @@ export function craft(state, recipeId) {
         state.player.maxHp += inc;
         state.player.hp += inc;
       }
+      if (r.effects.stats.maxMp) {
+        const inc = Number(r.effects.stats.maxMp);
+        state.player.maxMp += inc;
+        state.player.mp += inc;
+      }
+      if (r.effects.stats.maxEn) {
+        const inc = Number(r.effects.stats.maxEn);
+        state.player.maxEn += inc;
+        state.player.en += inc;
+      }
     }
   }
   state.timeMin += Number(r.timeCostMin || 15);
@@ -86,6 +96,12 @@ export function craft(state, recipeId) {
       }
       if (r.effects.stats.def) {
         state.log.push({ id: nowId(), type: "system", text: `防御力 +${r.effects.stats.def}` });
+      }
+      if (r.effects.stats.maxMp) {
+        state.log.push({ id: nowId(), type: "system", text: `法力上限 +${r.effects.stats.maxMp}` });
+      }
+      if (r.effects.stats.maxEn) {
+        state.log.push({ id: nowId(), type: "system", text: `能量上限 +${r.effects.stats.maxEn}` });
       }
     }
   }

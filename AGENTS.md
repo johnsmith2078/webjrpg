@@ -44,4 +44,22 @@ No build step required. Relies on `story.md` as the single source of truth for n
 
 # Run Integration Tests
 node tests/playthrough.mjs
+
+# Run Playthrough With Explicit Seed (silent)
+node tests/playthrough.mjs 123 --silent
+
+# Run Branch Path Tests (Mage/Engineer/Warrior)
+node tests/class_paths.mjs
+
+# Run Playthrough Across Many Seeds (N seeds, seed base)
+node tests/playthrough_seeds.mjs 20 1000
+
+# Run Playthrough Across Many Seeds (flag form)
+node tests/playthrough_seeds.mjs --seeds 20 --seed-base 1000
+
+# Run All Tests (convenience)
+node tests/run_all.mjs
+
+# Run All Tests (custom seed sweep)
+node tests/run_all.mjs --seeds 50 --seed-base 2000
 ```

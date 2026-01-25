@@ -24,9 +24,16 @@ export function startCombat(state, enemyId) {
   };
   
   if (!state.player) {
-    state.player = { hp: 20, maxHp: 20, atk: 1, def: 0, gold: 0, sp: 3 };
+    state.player = { hp: 20, maxHp: 20, mp: 10, maxMp: 10, en: 10, maxEn: 10, atk: 1, def: 0, gold: 0, sp: 3 };
   }
+  if (state.player.maxMp === undefined) state.player.maxMp = 10;
+  if (state.player.maxEn === undefined) state.player.maxEn = 10;
+  if (state.player.mp === undefined) state.player.mp = Number(state.player.maxMp || 10);
+  if (state.player.en === undefined) state.player.en = Number(state.player.maxEn || 10);
+
   state.player.sp = 3;
+  state.player.mp = Number(state.player.maxMp || 10);
+  state.player.en = Number(state.player.maxEn || 10);
   
   const name = e.name || enemyId;
   state.log.push({ id: nowId(), type: "rare", text: `「${name}」现身了。` });
@@ -205,6 +212,16 @@ function handleSkill(state, skillId, rng, log) {
     return { ended: false };
   }
 
+  if (skill.mpCost && (state.player.mp || 0) < skill.mpCost) {
+    log.push({ id: nowId(), type: "system", text: "法力不足。" });
+    return { ended: false };
+  }
+
+  if (skill.enCost && (state.player.en || 0) < skill.enCost) {
+    log.push({ id: nowId(), type: "system", text: "能量不足。" });
+    return { ended: false };
+  }
+
   if (skill.cost && (state.player.sp || 0) < skill.cost) {
     log.push({ id: nowId(), type: "system", text: "技能点不足。" });
     return { ended: false };
@@ -263,10 +280,34 @@ function handleSkill(state, skillId, rng, log) {
   } else if (skillId === "stealth") {
     c.statusEffects.stealth = Math.max(c.statusEffects.stealth, skill.duration);
     log.push({ id: nowId(), type: "rare", text: "你融入阴影，身形变得模糊。" });
+  } else if (skillId === "power_strike") {
+    const e = DATA.enemies[c.enemyId];
+    const baseAtk = Math.floor(state.player.atk * 1.6);
+    const dmg = damage(baseAtk, e.def, rng, 0);
+    c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
+    log.push({ id: nowId(), type: "rare", text: `强力击！你造成了 ${dmg} 点伤害。` });
+  } else if (skillId === "fireball") {
+    const e = DATA.enemies[c.enemyId];
+    const base = Number(skill.base_damage || 8);
+    const dmg = Math.max(1, base + rng.nextInt(0, 2) - Math.floor(Number(e.def || 0) / 2));
+    c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
+    log.push({ id: nowId(), type: "rare", text: `火球术！你造成了 ${dmg} 点魔法伤害。` });
+  } else if (skillId === "deploy_turret") {
+    const e = DATA.enemies[c.enemyId];
+    const base = Number(skill.base_damage || 5);
+    const dmg = Math.max(1, base + rng.nextInt(0, 2) - Number(e.def || 0));
+    c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
+    log.push({ id: nowId(), type: "rare", text: `炮塔齐射！你造成了 ${dmg} 点伤害。` });
   }
 
   if (skill.cooldown > 0) {
     c.skillCooldowns[skillId] = skill.cooldown;
+  }
+  if (skill.mpCost) {
+    state.player.mp = Math.max(0, Number(state.player.mp || 0) - Number(skill.mpCost || 0));
+  }
+  if (skill.enCost) {
+    state.player.en = Math.max(0, Number(state.player.en || 0) - Number(skill.enCost || 0));
   }
   if (skill.cost) {
     state.player.sp = (state.player.sp || 0) - skill.cost;

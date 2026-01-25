@@ -1,5 +1,7 @@
 import { createInitialState } from "../modules/state.js";
 import { createGame } from "../modules/game.js";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);
@@ -43,8 +45,18 @@ function doUntil(game, pred, stepFn, limit, label) {
 function resolvePromptIfAny(game) {
   const s = game.getState();
   if (!s.prompt) return;
-  // Prefer a deterministic choice: first enabled.
-  const c = (s.prompt.choices || []).find((x) => !x.disabled);
+  const choices = s.prompt.choices || [];
+
+  // Prefer deterministic options for certain prompts.
+  // Keep choices that are beneficial for progression (loot/power).
+  let c = null;
+  if (s.prompt.title === "岔路") {
+    c = choices.find((x) => x.id === "long" && !x.disabled);
+  }
+  if (s.prompt.title === "流浪者") {
+    c = choices.find((x) => x.id === "buy_rare" && !x.disabled) || choices.find((x) => x.id === "ask_fate" && !x.disabled);
+  }
+  if (!c) c = choices.find((x) => !x.disabled);
   if (c) {
     game.handleChoice(`prompt:${c.id}`);
     return;
@@ -60,11 +72,25 @@ function travelTo(game, id) {
 
 function maybeHeal(game) {
   const s = game.getState();
-  if (s.player.hp <= 10 && (s.inventory.onigiri || 0) > 0) {
+  if (
+    s.combat &&
+    s.player.hp <= 15 &&
+    s.flags.skills_learned_heal_light &&
+    (s.player.sp || 0) >= 1 &&
+    (!s.combat.skillCooldowns || !s.combat.skillCooldowns.heal_light)
+  ) {
+    game.handleChoice("skill:heal_light");
+    return;
+  }
+  if (s.player.hp <= 12 && (s.inventory.health_potion || 0) > 0) {
+    game.handleChoice("use:health_potion");
+    return;
+  }
+  if (s.player.hp <= 12 && (s.inventory.onigiri || 0) > 0) {
     game.handleChoice("use:onigiri");
     return;
   }
-  if (s.player.hp <= 8 && (s.inventory.herbs || 0) > 0) {
+  if (s.player.hp <= 10 && (s.inventory.herbs || 0) > 0) {
     game.handleChoice("use:herbs");
   }
 }
@@ -73,29 +99,83 @@ function resolveCombat(game) {
   const s = game.getState();
   if (!s.combat) return;
   // 简单策略：低血先吃饭团，否则一直攻击。
+  let lastEnemy = null;
+  const toughEnemies = new Set([
+    "cursed_miner",
+    "crystal_golem",
+    "crystal_overseer",
+    "clockwork_titan",
+    "mine_warlord"
+  ]);
   for (let i = 0; i < 200; i++) {
     const st = game.getState();
     if (!st.combat) return;
+    lastEnemy = st.combat.enemyId;
     maybeHeal(game);
     if (game.getState().combat) {
       const cs = game.getState();
-      if (cs.combat && cs.combat.enemyId === "shrine_guardian" && (cs.inventory.bound_charm || 0) > 0) {
+      const enemyId = cs.combat ? cs.combat.enemyId : null;
+      const isTough = !!enemyId && toughEnemies.has(enemyId);
+      const isBoss = enemyId === "crystal_overseer" || enemyId === "clockwork_titan" || enemyId === "mine_warlord";
+      const useConsumables = enemyId === "mine_warlord";
+
+      if (cs.combat && enemyId === "shrine_guardian" && (cs.inventory.bound_charm || 0) > 0) {
         game.handleChoice("use:bound_charm");
-      } else if (cs.combat && cs.combat.enemyId === "shrine_guardian" && cs.flags.has_iron_blade && !cs.combat.usedPurify) {
+      } else if (
+        cs.combat &&
+        useConsumables &&
+        (cs.inventory.warding_talisman || 0) > 0 &&
+        (!cs.combat.statusEffects || !cs.combat.statusEffects.ward)
+      ) {
+        game.handleChoice("use:warding_talisman");
+      } else if (
+        cs.combat &&
+        useConsumables &&
+        (cs.inventory.focus_tea || 0) > 0 &&
+        (!cs.combat.statusEffects || !cs.combat.statusEffects.crit_boost)
+      ) {
+        game.handleChoice("use:focus_tea");
+      } else if (
+        cs.combat &&
+        useConsumables &&
+        (cs.inventory.bound_charm || 0) > 0 &&
+        !cs.combat.enemyStun
+      ) {
+        game.handleChoice("use:bound_charm");
+      } else if (cs.combat && enemyId === "shrine_guardian" && cs.flags.has_iron_blade && !cs.combat.usedPurify) {
         game.handleChoice("skill:purify");
+      } else if (cs.combat && isTough && cs.flags.has_iron_blade && !cs.combat.usedPurify) {
+        game.handleChoice("skill:purify");
+      } else if (
+        cs.combat &&
+        cs.flags.skills_learned_power_strike &&
+        (cs.player.sp || 0) >= 2 &&
+        (!cs.combat.skillCooldowns || !cs.combat.skillCooldowns.power_strike)
+      ) {
+        game.handleChoice("skill:power_strike");
+      } else if (
+        cs.combat &&
+        enemyId === "mine_warlord" &&
+        (cs.player.hp || 0) <= 10 &&
+        (cs.inventory.onigiri || 0) === 0 &&
+        (cs.inventory.herbs || 0) === 0
+      ) {
+        game.handleChoice("defend");
       } else {
         game.handleChoice("attack");
       }
     }
     if (game.getState().gameOver) {
-      throw new Error("战斗失败：游戏结束");
+      throw new Error(`战斗失败：游戏结束 (enemy=${lastEnemy})`);
     }
   }
   throw new Error("战斗未在上限步数内结束");
 }
 
-function main() {
-  const seed = 123;
+export function runPlaythrough(opts = {}) {
+  const seed = Number.isFinite(opts.seed) ? opts.seed : Number(opts.seed || 123);
+  const silent = !!opts.silent;
+
   const state = createInitialState(seed);
   const game = createGame({ state });
 
@@ -336,7 +416,7 @@ function main() {
   assert(game.getState().flags.has_iron_blade, "此时应有 has_iron_blade");
 
   // Boss 前保证满血
-  if (game.getState().player.hp < game.getState().player.maxHp) {
+  while (game.getState().player.hp < game.getState().player.maxHp) {
     game.handleChoice("rest");
   }
 
@@ -358,7 +438,127 @@ function main() {
   assert(sawGuardian, "应至少触发一次 shrine_guardian 战斗");
   assert(countItem(game.getState(), "shrine_relic") >= 1, "击败神社守应掉落 神社遗物");
 
-  // 9) 前往山口并触发结局
+  // 8.5) Boss 连战前补给
+  travelTo(game, "forest_path");
+  travelTo(game, "old_shrine");
+  travelTo(game, "abandoned_mine");
+  doUntil(
+    game,
+    () => countItem(game.getState(), "iron_ore") >= 4,
+    () => {
+      game.handleChoice("explore");
+      resolvePromptIfAny(game);
+      resolveCombat(game);
+    },
+    200,
+    "补铁矿石"
+  );
+  travelTo(game, "old_shrine");
+  travelTo(game, "forest_path");
+  travelTo(game, "village");
+
+  if (countItem(game.getState(), "cedar_wood") < 3) {
+    doUntil(
+      game,
+      () => countItem(game.getState(), "cedar_wood") >= 3,
+      () => {
+        game.handleChoice("explore");
+        resolvePromptIfAny(game);
+        resolveCombat(game);
+      },
+      120,
+      "补杉木"
+    );
+  }
+
+  game.handleChoice("craft");
+  game.handleChoice("craft:forge_heavy_blade");
+  assert(game.getState().flags.has_heavy_blade, "锻造重剑后应有 has_heavy_blade");
+  doUntil(
+    game,
+    () => countItem(game.getState(), "rice") >= 8,
+    () => {
+      game.handleChoice("explore");
+      resolvePromptIfAny(game);
+      resolveCombat(game);
+    },
+    200,
+    "补米"
+  );
+  while (countItem(game.getState(), "rice") > 0) {
+    game.handleChoice("craft");
+    game.handleChoice("craft:cook_rice");
+  }
+  doUntil(
+    game,
+    () => countItem(game.getState(), "herbs") >= 3,
+    () => {
+      game.handleChoice("travel");
+      game.handleChoice("travel:forest_path");
+      game.handleChoice("explore");
+      resolvePromptIfAny(game);
+      resolveCombat(game);
+      game.handleChoice("travel");
+      game.handleChoice("travel:village");
+    },
+    120,
+    "补苦草"
+  );
+
+  // 9) 击败分支首领：晶域监视者
+  travelTo(game, "forest_path");
+  travelTo(game, "crystal_cave");
+  assert(game.getState().location === "crystal_cave", "应到达 crystal_cave");
+  while (game.getState().player.hp < game.getState().player.maxHp) game.handleChoice("rest");
+  doUntil(
+    game,
+    () => game.getState().flags.defeated_crystal_overseer,
+    () => {
+      game.handleChoice("explore");
+      resolvePromptIfAny(game);
+      resolveCombat(game);
+    },
+    60,
+    "击败晶域监视者"
+  );
+
+  // 10) 击败分支首领：发条巨像
+  travelTo(game, "forest_path");
+  travelTo(game, "ancient_lab");
+  assert(game.getState().location === "ancient_lab", "应到达 ancient_lab");
+  while (game.getState().player.hp < game.getState().player.maxHp) game.handleChoice("rest");
+  doUntil(
+    game,
+    () => game.getState().flags.defeated_clockwork_titan,
+    () => {
+      game.handleChoice("explore");
+      resolvePromptIfAny(game);
+      resolveCombat(game);
+    },
+    60,
+    "击败发条巨像"
+  );
+
+  // 11) 击败分支首领：矿脉督战者
+  travelTo(game, "forest_path");
+  travelTo(game, "old_shrine");
+  travelTo(game, "abandoned_mine");
+  assert(game.getState().location === "abandoned_mine", "应到达 abandoned_mine");
+  while (game.getState().player.hp < game.getState().player.maxHp) game.handleChoice("rest");
+  doUntil(
+    game,
+    () => game.getState().flags.defeated_mine_warlord,
+    () => {
+      game.handleChoice("explore");
+      resolvePromptIfAny(game);
+      resolveCombat(game);
+    },
+    80,
+    "击败矿脉督战者"
+  );
+
+  // 12) 前往山口并触发结局
+  travelTo(game, "old_shrine");
   travelTo(game, "mountain_pass");
   assert(game.getState().location === "mountain_pass", "应到达 mountain_pass");
 
@@ -369,13 +569,31 @@ function main() {
   assert(game.getState().gameOver, "选择结局后应 gameOver");
 
   const final = snapshot(game.getState());
-  console.log("PASS: 全流程通关测试");
-  console.log(JSON.stringify(final, null, 2));
+  if (!silent) {
+    console.log("PASS: 全流程通关测试");
+    console.log(JSON.stringify(final, null, 2));
+  }
+  return final;
 }
 
-try {
-  main();
-} catch (e) {
-  console.error("FAIL:", e && e.stack ? e.stack : e);
-  process.exitCode = 1;
+function main() {
+  const seedArg = process.argv.slice(2).find((x) => !x.startsWith("-"));
+  const seed = seedArg ? Number(seedArg) : 123;
+  const silent = process.argv.includes("--silent");
+  return runPlaythrough({ seed, silent });
+}
+
+const isMain = (() => {
+  const self = fileURLToPath(import.meta.url);
+  const entry = process.argv[1] ? path.resolve(process.argv[1]) : "";
+  return entry === self;
+})();
+
+if (isMain) {
+  try {
+    main();
+  } catch (e) {
+    console.error("FAIL:", e && e.stack ? e.stack : e);
+    process.exitCode = 1;
+  }
 }

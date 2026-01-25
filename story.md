@@ -16,6 +16,8 @@
 
 - `village`：黄金村（起点/制作/休息）
 - `forest_path`：杉径（采集/遭遇）
+- `crystal_cave`：水晶洞窟（法师偏好/魔法资源）
+- `ancient_lab`：远古实验室（工程师偏好/科技资源）
 - `old_shrine`：古神社（纸符/幽火/守护者）
 - `abandoned_mine`：废矿（铁矿石/分支事件）
 - `mountain_pass`：山口（结局）
@@ -26,17 +28,24 @@
 - `cook_rice`：煮饭
 - `bind_charm`：缚符
 - `forge_iron_blade`：锻铁刃
+- `forge_heavy_blade`：重剑（战士专属）
+- `craft_runic_staff`：符文法杖（法师专属）
+- `assemble_scrap_pistol`：废铁手枪（工程师专属）
 - `forge_master_blade`：锻神刃
 - `brew_health_potion`：调配生命药水
 - `craft_focus_tea`：制作凝神茶
 - `assemble_explosive_trap`：组装爆炸陷阱
 - `enchant_warding_talisman`：附魔护身符
+- `transmute_mana_crystal`：转化法力水晶
+- `repair_auto_turret`：修理自动炮塔
 
 ### 1.3 敌人（enemy_id）
 
 - `bandit`：山贼
 - `oni_wisp`：鬼面火
 - `shrine_guardian`：神社守
+- `crystal_golem`：水晶巨像（高物防，弱魔法）
+- `clockwork_spider`：发条蜘蛛（高闪避，弱科技）
 - `shadow_beast`：暗影兽（新敌人，高回避）
 - `cursed_miner`：被诅咒的矿工（矿洞精英怪）
 - `possessed_tree`：被附身的树（森林精英怪）
@@ -61,10 +70,18 @@
 - `explosive_trap`：爆炸陷阱（战斗道具：群体伤害）
 - `warding_talisman`：护身符（战斗道具：减少伤害）
 - `thieves_tools`：盗贼工具（特殊场景使用）
+- `mana_crystal`：法力水晶（法师资源）
+- `scrap_metal`：废金属（工程师资源）
+- `heavy_blade`：重剑（高伤武器）
+- `runic_staff`：符文法杖（魔法武器）
+- `scrap_pistol`：废铁手枪（远程武器）
 
 ### 1.5 关键旗标（flag）
 
 - `has_firepit`：已制作石火坑
+- `class_warrior`：职业：战士
+- `class_mage`：职业：法师
+- `class_engineer`：职业：工程师
 - `heard_rumor_shrine`：听到"神社又醒了"的传闻（解锁古神社）
 - `charm_bound`：已制作缚符（允许触发守护者事件）
 - `has_iron_blade`：已锻造铁刃（允许触发守护者事件；解锁技能"破邪斩"）
@@ -95,6 +112,9 @@
 - `counter`：反击（受到攻击时自动反击）
 - `heal_light`：微光治愈（少量恢复HP）
 - `stealth`：隐身（下回合回避率大幅提升）
+- `power_strike`：强力击（战士：高伤害）
+- `fireball`：火球术（法师：魔法伤害）
+- `deploy_turret`：部署炮塔（工程师：持续伤害）
 
 ---
 
@@ -102,7 +122,7 @@
 
 ### Act 0：村落建立循环（`village`）
 
-目标：点出“资源 → 制作 → 解锁”的核心循环。
+目标：点出“资源 → 制作 → 解锁”的核心循环，并**选择职业**。
 
 1) 触发传闻
 - 事件：`village_rumor`（once/priority）
@@ -113,19 +133,25 @@
 - 制作：`make_firepit`
 - 结果：设置 `has_firepit = true`
 
-3) 做恢复品（降低刷怪挫败感）
+3) **职业选择：起源回忆**
+- 事件：`village_origins` (需 `has_firepit`)
+- 选择：
+  - "我曾为王国而战" -> 战士 (获得 `heavy_blade` 配方)
+  - "我研习奥术之道" -> 法师 (获得 `runic_staff` 配方, 解锁 `crystal_cave`)
+  - "我创造机械奇迹" -> 工程师 (获得 `scrap_pistol` 配方, 解锁 `ancient_lab`)
+
+4) 做恢复品（降低刷怪挫败感）
 - 收集：`rice`
 - 制作：`cook_rice` → `onigiri`
 
-可选分支（一次性事件）：
-- `village_trader`：游商事件（prompt）
-  - 可用金币换 `herbs` 或 `paper_charm`（或离开）
+### Act 1：杉径与分支（`forest_path`）
 
-### Act 1：杉径试炼（`forest_path`）
-
-目标：第一次把战斗/采集带入“出行”。
+目标：第一次把战斗/采集带入“出行”，并探索职业分支。
 
 - 解锁方式：时间门槛（`timeMin >= 30`）
+- 分支地点：
+  - **水晶洞窟** (`crystal_cave`): 法师可感应进入，或通过探索发现。产出 `mana_crystal`。
+  - **远古实验室** (`ancient_lab`): 工程师可解锁进入，或找到钥匙。产出 `scrap_metal`。
 - 主要事件：
   - `forest_herbs`：获得 `herbs`
   - `forest_bandits`：战斗 `bandit`（产出金币/木头）
@@ -249,7 +275,7 @@
 - `pass_ending` 进入 prompt，并能选择 `seal` 完成结局
 
 推荐执行：
-- `node webjrpg/tests/playthrough.mjs`
+- `node tests/playthrough.mjs`
 
 ---
 

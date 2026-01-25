@@ -16,9 +16,14 @@ export function createInitialState(seedInput) {
     player: {
       hp: 20,
       maxHp: 20,
+      mp: 10,
+      maxMp: 10,
+      en: 10,
+      maxEn: 10,
       atk: 3,
       def: 1,
-      gold: 0
+      gold: 0,
+      sp: 3
     },
     inventory: {},
     flags: {},

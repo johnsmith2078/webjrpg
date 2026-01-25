@@ -16,8 +16,20 @@ export const DATA = {
     forest_path: {
       name: "杉径",
       desc: "落针无声。雾里像有什么在看你。",
-      connections: ["village", "old_shrine"],
+      connections: ["village", "old_shrine", "crystal_cave", "ancient_lab"],
       unlock: { type: "time", afterMin: 30 }
+    },
+    crystal_cave: {
+      name: "水晶洞窟",
+      desc: "空气中嗡嗡作响。紫色的水晶簇像心跳一样闪烁。",
+      connections: ["forest_path"],
+      unlock: { type: "time", afterMin: 60 }
+    },
+    ancient_lab: {
+      name: "远古实验室",
+      desc: "生锈的齿轮咬合在一起。偶尔传来蒸汽的嘶嘶声。",
+      connections: ["forest_path"],
+      unlock: { type: "time", afterMin: 75 }
     },
     old_shrine: {
       name: "古神社",
@@ -35,7 +47,15 @@ export const DATA = {
       name: "山口",
       desc: "风把岩石刮得发白。更高处，有一盏灯在等。",
       connections: ["old_shrine"],
-      unlock: { type: "flag", flag: "shrine_cleansed" }
+      unlock: {
+        type: "all",
+        of: [
+          { type: "flag", flag: "shrine_cleansed" },
+          { type: "flag", flag: "defeated_crystal_overseer" },
+          { type: "flag", flag: "defeated_clockwork_titan" },
+          { type: "flag", flag: "defeated_mine_warlord" }
+        ]
+      }
     }
   },
 
@@ -58,7 +78,15 @@ export const DATA = {
     explosive_trap: { name: "爆炸陷阱", tags: ["consumable"], combat: { type: "explosive", damage: [8, 12] }, desc: "简易的陷阱，威力惊人。" },
     warding_talisman: { name: "护身符", tags: ["talisman"], combat: { type: "ward", turns: 2 }, desc: "护身的符咒，能减少受到的伤害。" },
     thieves_tools: { name: "盗贼工具", tags: ["tool"], desc: "一套精致的工具，也许能打开什么。" },
-    master_blade: { name: "神刃", tags: ["weapon", "rare"], desc: "传说中的神刃，无坚不摧。" }
+    master_blade: { name: "神刃", tags: ["weapon", "rare"], desc: "传说中的神刃，无坚不摧。" },
+    mana_crystal: { name: "法力水晶", tags: ["material", "magic"], desc: "闪烁着奥术光辉的水晶。" },
+    scrap_metal: { name: "废金属", tags: ["material", "tech"], desc: "生锈的机械零件，可以回收利用。" },
+    heavy_blade: { name: "重剑", tags: ["weapon"], desc: "厚重的铁剑，每一击都势大力沉。" },
+    runic_staff: { name: "符文法杖", tags: ["weapon", "magic"], desc: "刻满符文的法杖，能引导法力。" },
+    scrap_pistol: { name: "废铁手枪", tags: ["weapon", "tech"], desc: "虽然简陋，但能发射致命的弹丸。" },
+    plate_armor: { name: "板甲", tags: ["armor"], desc: "厚实的铁甲，提供极高的防御。" },
+    warding_robe: { name: "护法长袍", tags: ["armor", "magic"], desc: "轻便的长袍，编织了防护法术。" },
+    repeating_crossbow: { name: "连弩", tags: ["weapon", "tech"], desc: "精密的机械弩，能快速射击。" }
   },
 
   recipes: {
@@ -93,6 +121,47 @@ export const DATA = {
       effects: { setFlag: "has_iron_blade", stats: { atk: 2 } },
       requirements: { flags: ["has_firepit"] },
       hiddenIf: { flags: ["has_iron_blade"] }
+    },
+    forge_heavy_blade: {
+      name: "锻造重剑",
+      inputs: { iron_ore: 4, cedar_wood: 3 },
+      outputs: { heavy_blade: 1 },
+      timeCostMin: 40,
+      effects: { setFlag: "has_heavy_blade", stats: { atk: 4 } },
+      requirements: { flags: ["has_firepit", "class_warrior"] },
+      hiddenIf: { flags: ["has_heavy_blade"] }
+    },
+    craft_runic_staff: {
+      name: "制作符文法杖",
+      inputs: { cedar_wood: 4, mana_crystal: 2 },
+      outputs: { runic_staff: 1 },
+      timeCostMin: 30,
+      effects: { setFlag: "has_runic_staff", stats: { atk: 1, maxMp: 5 } },
+      requirements: { flags: ["has_firepit", "class_mage"] },
+      hiddenIf: { flags: ["has_runic_staff"] }
+    },
+    assemble_scrap_pistol: {
+      name: "组装废铁手枪",
+      inputs: { scrap_metal: 5, cedar_wood: 2 },
+      outputs: { scrap_pistol: 1 },
+      timeCostMin: 50,
+      effects: { setFlag: "has_scrap_pistol", stats: { atk: 3 } },
+      requirements: { flags: ["has_firepit", "class_engineer"] },
+      hiddenIf: { flags: ["has_scrap_pistol"] }
+    },
+    transmute_mana_crystal: {
+      name: "转化法力水晶",
+      inputs: { spirit_stone: 1 },
+      outputs: { mana_crystal: 3 },
+      timeCostMin: 10,
+      requirements: { flags: ["class_mage"] }
+    },
+    repair_auto_turret: {
+      name: "组装自动炮塔",
+      inputs: { scrap_metal: 10, iron_ingot: 1 },
+      outputs: { explosive_trap: 3 },
+      timeCostMin: 60,
+      requirements: { flags: ["class_engineer"] }
     },
     forge_master_blade: {
       name: "锻神刃",
@@ -155,21 +224,66 @@ export const DATA = {
     },
     cursed_miner: {
       name: "被诅咒的矿工",
-      hp: 28,
-      atk: 5,
-      def: 3,
-      gold: 18,
-      loot: { iron_ingot: 2, spirit_stone: 1 },
+      hp: 20,
+      atk: 4,
+      def: 2,
+      gold: 14,
+      loot: { iron_ingot: 1, spirit_stone: 1 },
       traits: ["curses", "heavy_attack"]
     },
     possessed_tree: {
       name: "被附身的树",
-      hp: 35,
-      atk: 4,
-      def: 4,
+      hp: 28,
+      atk: 3,
+      def: 3,
       gold: 15,
       loot: { mystic_herb: 3, cedar_wood: 5 },
       traits: ["summon", "high_def"]
+    },
+    crystal_golem: {
+      name: "水晶巨像",
+      hp: 18,
+      atk: 4,
+      def: 3,
+      gold: 16,
+      loot: { mana_crystal: 2, spirit_stone: 1 },
+      traits: ["high_def"]
+    },
+    clockwork_spider: {
+      name: "发条蜘蛛",
+      hp: 18,
+      atk: 4,
+      def: 2,
+      gold: 14,
+      loot: { scrap_metal: 3 },
+      traits: ["evasion"]
+    },
+    crystal_overseer: {
+      name: "晶域监视者",
+      hp: 32,
+      atk: 4,
+      def: 4,
+      gold: 30,
+      loot: { mana_crystal: 4, spirit_stone: 2 },
+      traits: ["high_def"]
+    },
+    clockwork_titan: {
+      name: "发条巨像",
+      hp: 40,
+      atk: 6,
+      def: 4,
+      gold: 32,
+      loot: { scrap_metal: 6, iron_ingot: 1 },
+      traits: ["heavy_attack"]
+    },
+    mine_warlord: {
+      name: "矿脉督战者",
+      hp: 36,
+      atk: 5,
+      def: 4,
+      gold: 34,
+      loot: { iron_ingot: 3, monster_fang: 2 },
+      traits: ["curses", "heavy_attack"]
     }
   },
 
@@ -181,6 +295,50 @@ export const DATA = {
       priority: 5,
       text: ["老猎人压低声音：\"神社又醒了。\""],
       ops: [{ op: "setFlag", flag: "heard_rumor_shrine" }]
+    },
+    village_origins: {
+      at: "village",
+      w: 0,
+      once: true,
+      priority: 9,
+      requirements: { flags: ["has_firepit"] },
+      text: ["火坑噼啪作响。你盯着火星升起，忽然想起自己曾经是谁。"],
+      prompt: {
+        title: "起源",
+        choices: [
+          {
+            id: "warrior",
+            label: "我曾为王国而战",
+            ops: [
+              { op: "setFlag", flag: "class_warrior" },
+              { op: "setFlag", flag: "skills_learned_power_strike" },
+              { op: "gainItem", item: "iron_ore", qty: 1 },
+              { op: "advanceTime", min: 5 }
+            ]
+          },
+          {
+            id: "mage",
+            label: "我研习奥术之道",
+            ops: [
+              { op: "setFlag", flag: "class_mage" },
+              { op: "setFlag", flag: "skills_learned_fireball" },
+              { op: "gainItem", item: "mana_crystal", qty: 1 },
+              { op: "advanceTime", min: 5 }
+            ]
+          },
+          {
+            id: "engineer",
+            label: "我创造机械奇迹",
+            ops: [
+              { op: "setFlag", flag: "class_engineer" },
+              { op: "setFlag", flag: "skills_learned_deploy_turret" },
+              { op: "gainItem", item: "scrap_metal", qty: 1 },
+              { op: "advanceTime", min: 5 }
+            ]
+          }
+        ]
+      },
+      ops: []
     },
     gather_wood: {
       at: "village",
@@ -213,6 +371,67 @@ export const DATA = {
       ops: [
         { op: "startCombat", enemy: "bandit" },
         { op: "advanceTime", min: 5 }
+      ]
+    },
+
+    cave_mana: {
+      at: "crystal_cave",
+      w: 3,
+      text: ["水晶簇轻轻共鸣，一颗法力水晶落在你掌心。"],
+      ops: [
+        { op: "gainItem", item: "mana_crystal", qty: 1 },
+        { op: "advanceTime", min: 10 }
+      ]
+    },
+    cave_golem: {
+      at: "crystal_cave",
+      w: 2,
+      text: ["晶光凝聚成形，一个巨像缓缓转身。"],
+      ops: [
+        { op: "startCombat", enemy: "crystal_golem" },
+        { op: "advanceTime", min: 5 }
+      ]
+    },
+    cave_overseer: {
+      at: "crystal_cave",
+      w: 1,
+      once: true,
+      priority: 10,
+      requirements: { flags: ["has_firepit", "shrine_cleansed"] },
+      text: ["洞窟深处的水晶同时亮起。一个更巨大的影子从光里走出。"],
+      ops: [
+        { op: "startCombat", enemy: "crystal_overseer" },
+        { op: "advanceTime", min: 8 }
+      ]
+    },
+    lab_salvage: {
+      at: "ancient_lab",
+      w: 3,
+      text: ["你在废弃的台架下翻出一堆废金属。"],
+      ops: [
+        { op: "gainItem", item: "scrap_metal", qty: 2 },
+        { op: "advanceTime", min: 10 }
+      ]
+    },
+    lab_spider: {
+      at: "ancient_lab",
+      w: 2,
+      text: ["齿轮摩擦声逼近，一只发条蜘蛛从暗处爬出。"],
+      ops: [
+        { op: "startCombat", enemy: "clockwork_spider" },
+        { op: "advanceTime", min: 5 }
+      ]
+    },
+    lab_titan: {
+      at: "ancient_lab",
+      w: 1,
+      once: true,
+      priority: 10,
+      requirements: { flags: ["has_firepit", "shrine_cleansed"] },
+      text: ["实验室的主机在黑暗中自启。沉重的脚步声回荡。"],
+      ops: [
+        { op: "startCombat", enemy: "clockwork_titan" },
+        { op: "advanceTime", min: 8 }
       ]
     },
 
@@ -346,6 +565,18 @@ export const DATA = {
         { op: "advanceTime", min: 15 }
       ]
     },
+    mine_warlord: {
+      at: "abandoned_mine",
+      w: 1,
+      once: true,
+      priority: 9,
+      requirements: { flags: ["has_iron_blade", "defeated_crystal_overseer", "defeated_clockwork_titan"] },
+      text: ["矿道尽头传来铁链拖行声。一个披甲的影子缓缓抬头。"],
+      ops: [
+        { op: "startCombat", enemy: "mine_warlord" },
+        { op: "advanceTime", min: 8 }
+      ]
+    },
     pass_ending: {
       at: "mountain_pass",
       w: 5,
@@ -411,7 +642,10 @@ export const DATA = {
           {
             id: "leave",
             label: "摇摇头离开",
-            ops: [{ op: "advanceTime", min: 5 }]
+            ops: [
+              { op: "log", text: "你摇摇头，没有交易。" },
+              { op: "advanceTime", min: 5 }
+            ]
           }
         ]
       },
@@ -510,7 +744,10 @@ export const DATA = {
           {
             id: "leave",
             label: "摇头（你只想尽快上路）",
-            ops: [{ op: "advanceTime", min: 1 }]
+            ops: [
+              { op: "log", text: "你摇了摇头，转身离开。" },
+              { op: "advanceTime", min: 1 }
+            ]
           }
         ]
       },
@@ -531,7 +768,6 @@ export const DATA = {
             id: "ask_shrine",
             label: "询问神社的历史",
             ops: [
-              { op: "startQuest", quest: "elder_wisdom" },
               { op: "setFlag", flag: "met_elder" },
               { op: "log", text: "村长告诉你：神社曾经是村庄的守护之地，但不知从何时起变得异常。" },
               { op: "advanceTime", min: 10 }
@@ -559,7 +795,7 @@ export const DATA = {
           }
         ]
       },
-      ops: []
+      ops: [{ op: "startQuest", quest: "elder_wisdom" }]
     },
 
     blacksmith_encounter: {
@@ -576,7 +812,6 @@ export const DATA = {
             id: "learn_smithing",
             label: "学习锻造技巧",
             ops: [
-              { op: "startQuest", quest: "blacksmith_mastery" },
               { op: "setFlag", flag: "met_blacksmith" },
               { op: "setFlag", flag: "skills_learned_focus" },
               { op: "setFlag", flag: "skills_learned_purify" },
@@ -608,7 +843,7 @@ export const DATA = {
           }
         ]
       },
-      ops: []
+      ops: [{ op: "startQuest", quest: "blacksmith_mastery" }]
     },
 
     herbalist_encounter: {
@@ -625,7 +860,6 @@ export const DATA = {
             id: "learn_herbs",
             label: "学习草药知识",
             ops: [
-              { op: "startQuest", quest: "herbalist_collection" },
               { op: "setFlag", flag: "met_herbalist" },
               { op: "setFlag", flag: "skills_learned_heal_light" },
               { op: "log", text: "草药师分享知识：\"植物有灵性，用心倾听，它们会回应。\"" },
@@ -656,7 +890,7 @@ export const DATA = {
           }
         ]
       },
-      ops: []
+      ops: [{ op: "startQuest", quest: "herbalist_collection" }]
     },
 
     wanderer_encounter: {
@@ -685,8 +919,8 @@ export const DATA = {
             id: "ask_fate",
             label: "询问命运",
             ops: [
-              { op: "startQuest", quest: "wanderer_mystery" },
               { op: "gainItem", item: "thieves_tools", qty: 1 },
+              { op: "log", text: "流浪者低声道：\"路上会有门，也会有锁。拿着它，别把自己困住。\"" },
               { op: "setFlag", flag: "met_wanderer" },
               { op: "advanceTime", min: 15 }
             ]
@@ -702,7 +936,7 @@ export const DATA = {
           }
         ]
       },
-      ops: []
+      ops: [{ op: "startQuest", quest: "wanderer_mystery" }]
     },
 
     shadow_beast_ambush: {
@@ -967,6 +1201,29 @@ export const DATA = {
       duration: 1,
       cooldown: 4,
       cost: 2
+    },
+    power_strike: {
+      name: "强力击",
+      description: "蓄力重击，造成高额伤害",
+      effects: ["heavy_damage"],
+      cooldown: 2,
+      cost: 2
+    },
+    fireball: {
+      name: "火球术",
+      description: "投出火球，对敌人造成魔法伤害",
+      effects: ["magic_damage"],
+      base_damage: 9,
+      cooldown: 2,
+      mpCost: 4
+    },
+    deploy_turret: {
+      name: "部署炮塔",
+      description: "部署简易炮塔，立即造成伤害",
+      effects: ["tech_damage"],
+      base_damage: 6,
+      cooldown: 3,
+      enCost: 4
     }
   }
 };

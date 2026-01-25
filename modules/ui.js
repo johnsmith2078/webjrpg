@@ -12,6 +12,8 @@ export function mountApp({ game }) {
   const $sceneTitle = el("sceneTitle");
   const $statusDay = el("statusDay").querySelector(".chip__v");
   const $statusHP = el("statusHP").querySelector(".chip__v");
+  const $statusMP = el("statusMP").querySelector(".chip__v");
+  const $statusEN = el("statusEN").querySelector(".chip__v");
   const $statusGold = el("statusGold").querySelector(".chip__v");
 
   const $log = el("log");
@@ -86,6 +88,8 @@ export function mountApp({ game }) {
     const day = Math.floor(state.timeMin / 1440) + 1;
     $statusDay.textContent = String(day);
     $statusHP.textContent = `${state.player.hp}/${state.player.maxHp}`;
+    $statusMP.textContent = `${Number(state.player.mp || 0)}/${Number(state.player.maxMp || 0)}`;
+    $statusEN.textContent = `${Number(state.player.en || 0)}/${Number(state.player.maxEn || 0)}`;
     $statusGold.textContent = String(state.player.gold);
   }
 
