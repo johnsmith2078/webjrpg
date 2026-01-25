@@ -47,15 +47,7 @@ export const DATA = {
       name: "山口",
       desc: "风把岩石刮得发白。更高处，有一盏灯在等。",
       connections: ["old_shrine"],
-      unlock: {
-        type: "all",
-        of: [
-          { type: "flag", flag: "shrine_cleansed" },
-          { type: "flag", flag: "defeated_crystal_overseer" },
-          { type: "flag", flag: "defeated_clockwork_titan" },
-          { type: "flag", flag: "defeated_mine_warlord" }
-        ]
-      }
+      unlock: { type: "flag", flag: "shrine_cleansed" }
     }
   },
 
@@ -919,9 +911,7 @@ export const DATA = {
             label: "学习锻造技巧",
             ops: [
               { op: "setFlag", flag: "met_blacksmith" },
-              { op: "setFlag", flag: "skills_learned_focus" },
               { op: "setFlag", flag: "skills_learned_purify" },
-              { op: "log", text: "铁匠教你凝神技巧：\"集中精神，能看破敌人的弱点。\"" },
               { op: "log", text: "你还学会了破邪斩的精髓：\"正义之心，无物不破。\"" },
               { op: "advanceTime", min: 20 }
             ]
@@ -968,8 +958,10 @@ export const DATA = {
             ops: [
               { op: "setFlag", flag: "met_herbalist" },
               { op: "setFlag", flag: "skills_learned_heal_light" },
+              { op: "setFlag", flag: "skills_learned_focus" },
               { op: "log", text: "草药师分享知识：\"植物有灵性，用心倾听，它们会回应。\"" },
               { op: "log", text: "你学会了微光治愈：用内在之力修补外在伤痕。\"" },
+              { op: "log", text: "你学会了凝神：心神归一，捕捉稍纵即逝的破绽。" },
               { op: "advanceTime", min: 15 }
             ]
           },
@@ -1155,12 +1147,6 @@ export const DATA = {
             gives: { gold: 2 },
             cost: 0,
             description: "卖出3块铁矿石换取2钱"
-          },
-          teach_focus: {
-            name: "教授凝神技能",
-            requires: { flags: ["has_iron_blade"] },
-            gives: { skill: "focus" },
-            cost: 0
           }
         }
       }
@@ -1203,6 +1189,12 @@ export const DATA = {
             name: "教授治愈技能",
             requires: { flags: ["met_herbalist"] },
             gives: { skill: "heal_light" },
+            cost: 0
+          },
+          teach_focus: {
+            name: "教授凝神技能",
+            requires: { flags: ["met_herbalist"] },
+            gives: { skill: "focus" },
             cost: 0
           }
         }

@@ -15,6 +15,7 @@ export function mountApp({ game }) {
   const $statusHP = el("statusHP").querySelector(".chip__v");
   const $statusMP = el("statusMP").querySelector(".chip__v");
   const $statusEN = el("statusEN").querySelector(".chip__v");
+  const $statusSP = el("statusSP").querySelector(".chip__v");
   const $statusATK = el("statusATK").querySelector(".chip__v");
   const $statusDEF = el("statusDEF").querySelector(".chip__v");
   const $statusGold = el("statusGold").querySelector(".chip__v");
@@ -96,6 +97,7 @@ export function mountApp({ game }) {
     $statusHP.textContent = `${state.player.hp}/${Number(derived.maxHp || state.player.maxHp || 0)}`;
     $statusMP.textContent = `${Number(state.player.mp || 0)}/${Number(derived.maxMp || state.player.maxMp || 0)}`;
     $statusEN.textContent = `${Number(state.player.en || 0)}/${Number(derived.maxEn || state.player.maxEn || 0)}`;
+    $statusSP.textContent = String(Number(state.player.sp || 0));
     $statusATK.textContent = String(derived.atk);
     $statusDEF.textContent = String(derived.def);
     $statusGold.textContent = String(state.player.gold);

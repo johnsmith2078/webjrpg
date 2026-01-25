@@ -307,7 +307,9 @@ function handleSkill(state, skillId, rng, log) {
     }
 
     const before = state.player.hp;
-    state.player.hp = clamp(state.player.hp + healAmt, 0, state.player.maxHp);
+    const derived = derivePlayerStats(state);
+    const maxHp = Number(derived.maxHp || state.player.maxHp || 20);
+    state.player.hp = clamp(state.player.hp + healAmt, 0, maxHp);
     log.push({ id: nowId(), type: "system", text: `微光治愈！恢复了 ${state.player.hp - before} 点体力。` });
   } else if (skillId === "stealth") {
     c.statusEffects.stealth = Math.max(c.statusEffects.stealth, skill.duration);

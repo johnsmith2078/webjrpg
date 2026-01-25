@@ -67,11 +67,6 @@ export function applyOps(state, rng, ops, lines) {
       state.player.gold = Math.max(0, Number(state.player.gold || 0) - amt);
       lines.push({ id: nowId(), type: "system", text: `花费 ${amt} 金币。`, });
     }
-    if (op.op === "spendGold") {
-      const amt = Number(op.amt || 0);
-      state.player.gold = Math.max(0, Number(state.player.gold || 0) - amt);
-      lines.push({ id: nowId(), type: "system", text: `花费 ${amt} 金币。`, });
-    }
     if (op.op === "setFlag") {
       state.flags[op.flag] = true;
     }
@@ -87,7 +82,8 @@ export function applyOps(state, rng, ops, lines) {
     if (op.op === "heal") {
       const amt = Number(op.amt || 0);
       const derived = derivePlayerStats(state);
-      state.player.hp = Math.min(Number(state.player.maxHp || 20), state.player.hp + amt);
+      const maxHp = Number(derived.maxHp || state.player.maxHp || 20);
+      state.player.hp = Math.min(maxHp, state.player.hp + amt);
       lines.push({ id: nowId(), type: "system", text: `恢复了 ${amt} 点体力。` });
     }
     if (op.op === "npcService") {

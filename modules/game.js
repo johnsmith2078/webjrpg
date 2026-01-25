@@ -479,6 +479,29 @@ export function createGame({ state }) {
     return npcs;
   }
 
+  function getSkillStatus(skillId) {
+    const skill = DATA.skills[skillId];
+    if (!skill) return { ok: false, reason: "技能不可用" };
+    const cooldown = Number(s.combat?.skillCooldowns?.[skillId] || 0);
+    if (cooldown > 0) return { ok: false, reason: `冷却 ${cooldown} 回合` };
+    const mp = Number(s.player?.mp || 0);
+    const en = Number(s.player?.en || 0);
+    const sp = Number(s.player?.sp || 0);
+    if (skill.mpCost && mp < Number(skill.mpCost)) return { ok: false, reason: "法力不足" };
+    if (skill.enCost && en < Number(skill.enCost)) return { ok: false, reason: "能量不足" };
+    if (skill.cost && sp < Number(skill.cost)) return { ok: false, reason: "技能点不足" };
+    return { ok: true, reason: "" };
+  }
+
+  function getPurifyStatus() {
+    if (s.combat?.usedPurify) return { ok: false, reason: "本场已用" };
+    const weaponId = s.equipment?.weapon;
+    const weapon = weaponId ? DATA.items[weaponId] : null;
+    const allows = !!(weapon && weapon.combat && Array.isArray(weapon.combat.allowsSkills) && weapon.combat.allowsSkills.includes("purify"));
+    if (!allows) return { ok: false, reason: "需要可用武器" };
+    return { ok: true, reason: "" };
+  }
+
   function choices() {
     if (s.gameOver) {
       return [
@@ -564,38 +587,48 @@ export function createGame({ state }) {
         }
       }
       const skillChoices = [];
-      if (s.flags.skills_learned_purify && !s.combat.usedPurify) {
-        skillChoices.push({ id: "skill:purify", label: "破邪斩", kind: "combat" });
+      const pushSkill = (id, label, statusOverride) => {
+        const status = statusOverride || getSkillStatus(id);
+        skillChoices.push({
+          id: `skill:${id}`,
+          label,
+          kind: "combat",
+          disabled: !status.ok,
+          sub: status.reason || ""
+        });
+      };
+      if (s.flags.skills_learned_purify) {
+        pushSkill("purify", "破邪斩", getPurifyStatus());
       }
-      if (s.flags.skills_learned_focus && (!s.combat.skillCooldowns?.focus || s.combat.skillCooldowns.focus === 0)) {
-        skillChoices.push({ id: "skill:focus", label: "凝神", kind: "combat" });
+      if (s.flags.skills_learned_focus) {
+        pushSkill("focus", "凝神");
       }
-      if (s.flags.skills_learned_sweep && (!s.combat.skillCooldowns?.sweep || s.combat.skillCooldowns.sweep === 0)) {
-        skillChoices.push({ id: "skill:sweep", label: "横扫", kind: "combat" });
+      if (s.flags.skills_learned_sweep) {
+        pushSkill("sweep", "横扫");
       }
-      if (s.flags.skills_learned_heal_light && (!s.combat.skillCooldowns?.heal_light || s.combat.skillCooldowns.heal_light === 0)) {
-        skillChoices.push({ id: "skill:heal_light", label: "微光治愈", kind: "combat" });
+      if (s.flags.skills_learned_heal_light) {
+        pushSkill("heal_light", "微光治愈");
       }
-      if (s.flags.skills_learned_stealth && (!s.combat.skillCooldowns?.stealth || s.combat.skillCooldowns.stealth === 0)) {
-        skillChoices.push({ id: "skill:stealth", label: "隐身", kind: "combat" });
+      if (s.flags.skills_learned_stealth) {
+        pushSkill("stealth", "隐身");
       }
-      if (s.flags.skills_learned_power_strike && (!s.combat.skillCooldowns?.power_strike || s.combat.skillCooldowns.power_strike === 0)) {
-        skillChoices.push({ id: "skill:power_strike", label: "强力击", kind: "combat" });
+      if (s.flags.skills_learned_power_strike) {
+        pushSkill("power_strike", "强力击");
       }
-      if (s.flags.skills_learned_war_cry && (!s.combat.skillCooldowns?.war_cry || s.combat.skillCooldowns.war_cry === 0)) {
-        skillChoices.push({ id: "skill:war_cry", label: "战吼", kind: "combat" });
+      if (s.flags.skills_learned_war_cry) {
+        pushSkill("war_cry", "战吼");
       }
-      if (s.flags.skills_learned_fireball && (!s.combat.skillCooldowns?.fireball || s.combat.skillCooldowns.fireball === 0)) {
-        skillChoices.push({ id: "skill:fireball", label: "火球术", kind: "combat" });
+      if (s.flags.skills_learned_fireball) {
+        pushSkill("fireball", "火球术");
       }
-      if (s.flags.skills_learned_arcane_drain && (!s.combat.skillCooldowns?.arcane_drain || s.combat.skillCooldowns.arcane_drain === 0)) {
-        skillChoices.push({ id: "skill:arcane_drain", label: "奥术汲取", kind: "combat" });
+      if (s.flags.skills_learned_arcane_drain) {
+        pushSkill("arcane_drain", "奥术汲取");
       }
-      if (s.flags.skills_learned_deploy_turret && (!s.combat.skillCooldowns?.deploy_turret || s.combat.skillCooldowns.deploy_turret === 0)) {
-        skillChoices.push({ id: "skill:deploy_turret", label: "部署炮塔", kind: "combat" });
+      if (s.flags.skills_learned_deploy_turret) {
+        pushSkill("deploy_turret", "部署炮塔");
       }
-      if (s.flags.skills_learned_shock_swarm && (!s.combat.skillCooldowns?.shock_swarm || s.combat.skillCooldowns.shock_swarm === 0)) {
-        skillChoices.push({ id: "skill:shock_swarm", label: "电弧蜂群", kind: "combat" });
+      if (s.flags.skills_learned_shock_swarm) {
+        pushSkill("shock_swarm", "电弧蜂群");
       }
 
        return [
@@ -1120,7 +1153,8 @@ export function createGame({ state }) {
           questState.progress[objKey] = { current: has, target, complete };
         }
       } else if (objective.type === "craft") {
-        complete = state.flags[quest.recipe] || false;
+        const craftedFlag = objective.recipe ? `crafted_${objective.recipe}` : null;
+        complete = craftedFlag ? !!state.flags[craftedFlag] : false;
         questState.progress[objKey] = { current: complete ? 1 : 0, target: 1, complete };
       } else if (objective.type === "defeat") {
         complete = state.flags[`defeated_${objective.enemy}`] || false;

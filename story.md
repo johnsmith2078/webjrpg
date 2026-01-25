@@ -40,6 +40,8 @@
 - `repair_auto_turret`：修理自动炮塔
 - `forge_plate_armor`：锻板甲
 - `stitch_warding_robe`：缝制护法长袍
+- `refine_iron`：提炼铁锭
+- `sell_ore`：出售铁矿石
 
 ### 1.3 敌人（enemy_id）
 
@@ -49,8 +51,12 @@
 - `crystal_golem`：水晶巨像（高物防，弱魔法）
 - `clockwork_spider`：发条蜘蛛（高闪避，弱科技）
 - `shadow_beast`：暗影兽（新敌人，高回避）
+- `wolf`：野狼（高回避）
 - `cursed_miner`：被诅咒的矿工（矿洞精英怪）
 - `possessed_tree`：被附身的树（森林精英怪）
+- `crystal_overseer`：晶域监视者（洞窟 Boss）
+- `clockwork_titan`：发条巨像（实验室 Boss）
+- `mine_warlord`：矿脉督战者（废矿 Boss）
 
 ### 1.4 道具（item_id）
 
@@ -66,12 +72,12 @@
 - `iron_ingot`：铁锭（高级锻造材料）
 - `mystic_herb`：神秘草药（稀有治疗材料）
 - `monster_fang`：兽牙（武器升级材料）
-- `spirit_stone`：灵石（技能升级材料）
+- `spirit_stone`：灵石（稀有材料；当前无技能强化效果）
 - `health_potion`：生命药水（恢复更多HP）
 - `focus_tea`：凝神茶（临时提升暴击率）
 - `explosive_trap`：爆炸陷阱（战斗道具：群体伤害）
 - `warding_talisman`：护身符（战斗道具：减少伤害）
-- `thieves_tools`：盗贼工具（特殊场景使用）
+- `thieves_tools`：盗贼工具（稀有工具；当前无专属交互）
 - `mana_crystal`：法力水晶（法师资源）
 - `scrap_metal`：废金属（工程师资源）
 - `heavy_blade`：重剑（高伤武器）
@@ -80,7 +86,7 @@
 - `master_blade`：神刃（传说武器）
 - `plate_armor`：板甲（防具）
 - `warding_robe`：护法长袍（防具）
-- `repeating_crossbow`：连弩（武器）
+- `repeating_crossbow`：连弩（武器；当前无获取途径）
 
 ### 1.5 关键旗标（flag）
 
@@ -91,16 +97,29 @@
 - `heard_rumor_shrine`：听到"神社又醒了"的传闻（解锁古神社）
 - `charm_bound`：已制作缚符（允许触发守护者事件）
 - `has_iron_blade`：已锻造铁刃（允许触发守护者事件；解锁技能"破邪斩"）
-- `shrine_cleansed`：已击败神社守（解锁山口）
+- `shrine_cleansed`：已击败神社守（终盘链条前置之一）
+- `defeated_crystal_overseer`：已击败晶域监视者（解锁山口前置之一）
+- `defeated_clockwork_titan`：已击败发条巨像（解锁山口前置之一）
+- `defeated_mine_warlord`：已击败矿脉督战者（解锁山口前置之一）
 - `cursed`：矿洞"不祥"状态（战斗受惩罚；可被"破邪斩"清除）
 - `ending_seal`：结局分支：封印
 - `ending_keep`：结局分支：保留
 - `met_blacksmith`：已遇见铁匠（解锁特殊锻造）
 - `met_herbalist`：已遇见草药师（解锁特殊制作）
 - `met_elder`：已遇见村长（解锁高级信息）
+- `met_wanderer`：已遇见流浪者
 - `skills_learned_purify`：已学会破邪斩
 - `skills_learned_focus`：已学会凝神（提升暴击率）
-- `skills_learned_sweep`：已学会横扫（群体攻击）
+- `skills_learned_power_strike`：已学会强力击
+- `skills_learned_war_cry`：已学会战吼
+- `skills_learned_fireball`：已学会火球术
+- `skills_learned_arcane_drain`：已学会奥术汲取
+- `skills_learned_deploy_turret`：已学会部署炮塔
+- `skills_learned_shock_swarm`：已学会电弧蜂群
+- `skills_learned_heal_light`：已学会微光治愈
+- `skills_learned_sweep`：已学会横扫（当前无获取途径）
+- `skills_learned_stealth`：已学会隐身（当前无获取途径）
+- `skills_learned_counter`：已学会反击（当前无获取途径，且战斗未实现反击触发）
 - `has_heavy_blade`：已锻造重剑
 - `has_runic_staff`：已制作符文法杖
 - `has_scrap_pistol`：已组装废铁手枪
@@ -114,7 +133,8 @@
 - `blacksmith`：铁匠（提供武器升级和战斗指导）
 - `herbalist`：草药师（提供药剂制作和治疗服务）
 - `wanderer`：流浪者（提供稀有物品和神秘情报）
-- `shrine_keeper`：神社守卫（已故，只在回忆中出现）
+
+注：`shrine_keeper` 仅为叙事称呼，当前实现未作为 `DATA.npcs` 出现。
 
 ### 1.7 技能（skill_id）
 
@@ -151,9 +171,11 @@
 3) **职业选择：起源回忆**
 - 事件：`village_origins` (需 `has_firepit`)
 - 选择：
-- "我曾为王国而战" -> 战士 (获得 `heavy_blade` 配方, 学会 `power_strike` 与 `war_cry`)
-- "我研习奥术之道" -> 法师 (获得 `runic_staff` 配方, 学会 `fireball` 与 `arcane_drain`, 解锁 `crystal_cave`)
-- "我创造机械奇迹" -> 工程师 (获得 `scrap_pistol` 配方, 学会 `deploy_turret` 与 `shock_swarm`, 解锁 `ancient_lab`)
+- "我曾为王国而战" -> 战士（设置 `class_warrior`；学会 `power_strike` / `war_cry`；获得 `iron_ore x1`）
+- "我研习奥术之道" -> 法师（设置 `class_mage`；学会 `fireball` / `arcane_drain`；获得 `mana_crystal x1`）
+- "我创造机械奇迹" -> 工程师（设置 `class_engineer`；学会 `deploy_turret` / `shock_swarm`；获得 `scrap_metal x1`）
+
+说明（当前实现）：职业旗标用于解锁对应配方/资源转化；地点解锁以 `timeMin`/旗标为准。
 
 4) 做恢复品（降低刷怪挫败感）
 - 收集：`rice`
@@ -164,9 +186,9 @@
 目标：第一次把战斗/采集带入"出行"，并探索职业分支。
 
 - 解锁方式：时间门槛（`timeMin >= 30`）
-- 分支地点：
-  - **水晶洞窟** (`crystal_cave`): 法师可感应进入，或通过探索发现。产出 `mana_crystal`。
-  - **远古实验室** (`ancient_lab`): 工程师可解锁进入，或找到钥匙。产出 `scrap_metal`。
+- 分支地点（当前实现：时间解锁）：
+  - **水晶洞窟** (`crystal_cave`): `timeMin >= 60`。产出 `mana_crystal`。
+  - **远古实验室** (`ancient_lab`): `timeMin >= 75`。产出 `scrap_metal`。
 - 主要事件：  
   - `forest_herbs`：获得 `herbs`
   - `forest_bandits`：战斗 `bandit`（产出金币/木头）
@@ -209,7 +231,7 @@
 - 制作：`forge_iron_blade`
 - 消耗：`iron_ore x2` + `cedar_wood x2`
 - 产出：`iron_blade x1`
-- 结果：设置 `has_iron_blade = true`，并提升 `atk`
+- 结果：设置 `has_iron_blade = true`；获得装备 `iron_blade`（武器 atk +2），锻造后会自动装备（若可）
 - 战斗收益：
   - 普攻对 `oni_wisp` / `shrine_guardian` 额外 +1 伤害
 - 解锁战斗技能：`skill:purify`（破邪斩；对灵体/守护者伤害更高，并可清除 `cursed`）
@@ -272,7 +294,16 @@
 
 目标：给出明确分支结局，避免"走到终点就是结束"的单调感。
 
-- 解锁：`shrine_cleansed = true`
+- 解锁：满足以下全部条件：
+  - `shrine_cleansed = true`
+  - `defeated_crystal_overseer = true`
+  - `defeated_clockwork_titan = true`
+  - `defeated_mine_warlord = true`
+
+补充（当前实现：山口前的 3 个 Boss 链）：
+- `cave_overseer`（`crystal_cave`，once，需 `has_firepit` 且 `shrine_cleansed`）→ 战斗 `crystal_overseer`
+- `lab_titan`（`ancient_lab`，once，需 `has_firepit` 且 `shrine_cleansed`）→ 战斗 `clockwork_titan`
+- `mine_warlord`（`abandoned_mine`，once，需 `has_iron_blade` 且已击败前两者）→ 战斗 `mine_warlord`
 - 事件：`pass_ending`（once/priority，prompt）
 - 选择：
   - `prompt:seal`：消耗 `shrine_relic`，设置 `ending_seal`，结束
@@ -285,7 +316,7 @@
 必须覆盖：
 - `bind_charm` 会消耗 `paper_charm`，并产出 `bound_charm`
 - `bound_charm` 在战斗中可用（至少一次成功让敌人跳过攻击）
-- `forge_iron_blade` 会产出 `iron_blade` 且提升攻击，并解锁 `skill:purify`
+- `forge_iron_blade` 会产出 `iron_blade`（装备攻击 +2，锻造后自动装备）并解锁 `skill:purify`
 - `shrine_guardian` 必掉 `shrine_relic`
 - `pass_ending` 进入 prompt，并能选择 `seal` 完成结局
 
@@ -294,109 +325,104 @@
 
 ---
 
-## 4. NPC系统设计
+## 4. NPC系统（当前实现）
 
 ### 4.1 NPC交互机制
 
-NPC通过事件系统触发，具有以下特征：
-- **位置绑定**：每个NPC固定在特定地点或通过特定条件触发
-- **对话树**：NPC支持多轮对话和选择分支
-- **功能提供**：NPC提供独特服务（制作、锻造、信息、交易）
-- **关系系统**：与NPC的交互影响后续剧情和可用服务
+NPC通过两种方式出现：
+- **事件遇见（prompt）**：来自 `DATA.events`（如 `blacksmith_encounter` / `herbalist_encounter` / `wanderer_encounter` / `village_elder_meeting`）
+- **交谈菜单（talk）**：列出 `DATA.npcs` 中 `location` 等于当前地点、且 `requirements` 满足的 NPC
+
+当前 UI 能力：
+- **greeting**：支持 `dialogues.greeting` 的多条“打招呼”文本
+- **services**：支持 `npc.services` 或 `npc.dialogues.services`（可消耗道具/金币并获得道具/金币/技能）
+
+当前未在 UI 暴露（数据可能存在）：
+- `dialogues.trade`
+- `dialogues` 下除 `greeting/services` 之外的分支
+- “关系系统”
 
 ### 4.2 NPC详细设计
 
 #### `village_elder`（村长）
 - **位置**：`village`，需`has_firepit`触发
-- **功能**：
-  - 提供村庄历史和背景故事
-  - 解锁高级地点的线索
-  - 给予特殊任务和奖励
-- **对话选项**：
-  - 询问神社历史（了解背景）
-  - 请求帮助（获得特殊道具）
-  - 贸易资源（用金币换稀有物品）
+- **主要交互（实现）**：一次性事件 `village_elder_meeting` 会设置 `met_elder`，并开启任务 `elder_wisdom`
+- **交谈菜单（实现）**：目前仅展示 greeting（不包含 trade / shrine_history / request_help 等分支）
 
 #### `blacksmith`（铁匠）
 - **位置**：`village`，需`iron_ore >= 3`触发
-- **功能**：
-  - 武器升级和锻造指导
-  - 解锁高级战斗技能
-  - 提供战斗技巧建议
-- **特殊服务**：
-  - `upgrade_weapon`：消耗材料升级武器
-  - `teach_skill`：教授战斗技能
+- **主要交互（实现）**：一次性事件 `blacksmith_encounter` 会设置 `met_blacksmith`，并开启任务 `blacksmith_mastery`
+- **交谈菜单（实现）**：提供 services（`upgrade_weapon` / `refine_iron` / `sell_ore` / `teach_focus`）
 
 #### `herbalist`（草药师）
 - **位置**：`forest_path`，随机遇到
-- **功能**：
-  - 草药识别和收集指导
-  - 药剂制作和配方
-  - 治疗服务
-- **特殊服务**：
-  - `identify_herbs`：识别未知草药
-  - `brew_potion`：制作特殊药剂
+- **主要交互（实现）**：一次性事件 `herbalist_encounter` 会设置 `met_herbalist`，并开启任务 `herbalist_collection`
+- **交谈菜单（实现）**：提供 services（`identify_herbs` / `sell_herbs` / `buy_mystic` / `teach_heal`）
 
 #### `wanderer`（流浪者）
-- **位置**：随机在各地遇到
-- **功能**：
-  - 提供神秘情报和预言
-  - 交易稀有物品
-  - 解开隐藏剧情
-- **特殊机制**：
-  - 每次游戏只能遇到一次
-  - 提供的选择影响结局走向
+- **位置**：随机在各地遇到（通过事件 `wanderer_encounter`，once）
+- **交谈菜单（实现）**：`DATA.npcs.wanderer.location = random`，当前不会出现在交谈菜单中
+- **主要交互（实现）**：事件提供一次性 prompt 选择（购买灵石/购买兽牙/获得盗贼工具），并设置 `met_wanderer`，开启任务 `wanderer_mystery`
 
 ---
 
-## 5. 技能系统设计
+## 5. 技能系统（当前实现）
 
 ### 5.1 技能获取机制
 
-技能通过以下方式获得：
-- **NPC教授**：铁匠、草药师等NPC传授
-- **物品解锁**：使用特定物品领悟技能
-- **事件触发**：特殊剧情事件中学会
-- **等级提升**：通过战斗经验积累
+技能通过设置旗标 `skills_learned_<skillId>` 获得，来源包括：
+- **事件**：如 `village_origins` / `blacksmith_encounter` / `herbalist_encounter`
+- **NPC services**：如 `teach_focus` / `teach_heal`
+- **锻造副作用**：如锻造 `forge_iron_blade` 会额外设置 `skills_learned_purify`
+
+注：当前实现没有“经验/等级”系统。
 
 ### 5.2 技能使用机制
 
 - **技能点**：每个技能消耗一定的技能点（SP）
 - **冷却时间**：部分技能有使用间隔
 - **条件限制**：某些技能需要特定装备或状态
-- **组合技**：多个技能可以组合产生新效果
+
+补充（实现细节）：
+- 每场战斗开始时 `SP` 会重置为 3
+- 技能冷却为“战斗内冷却”，存储在 `state.combat.skillCooldowns`
 
 ### 5.3 技能详细说明
 
 #### `purify`（破邪斩）
-- **获取**：锻造铁刃后自动学会
-- **效果**：对灵体敌人+5伤害，清除诅咒状态
-- **消耗**：无消耗，每场战斗只能使用一次
+- **获取**：锻造 `forge_iron_blade` 后自动学会；也可在 `blacksmith_encounter` 选择“学习锻造技巧”时学会
+- **效果**：对 `oni_wisp` / `shrine_guardian` 额外伤害；若带有 `cursed` 则伤害翻倍并清除 `cursed`
+- **限制**：需要装备武器允许 `purify`；每场战斗只能使用一次
 
 #### `focus`（凝神）
-- **获取**：向草药师学习
-- **效果**：下次攻击暴击率+50%
-- **消耗**：消耗1点SP，需要凝神茶
+- **获取**：`blacksmith_encounter` 选择“学习锻造技巧”，或后续通过铁匠服务 `teach_focus`
+- **效果**：提升暴击率（持续 2 回合）
+- **消耗**：消耗 1 点 SP；冷却 3 回合
+
+注：`focus_tea` 是独立的战斗消耗品（使用后也会提升暴击率），与技能 `focus` 不互相依赖。
 
 #### `sweep`（横扫）
-- **获取**：向铁匠学习，需要铁刃
+- **获取**：当前实现无获取途径（技能已定义，但正常流程不可获得）
 - **效果**：对所有敌人造成50%武器伤害
-- **消耗**：消耗2点SP，需要重型武器
+- **消耗**：消耗 2 点 SP；冷却 2 回合
+
+注：当前战斗模型为 1v1，“范围伤害”在实现上等价于一次低倍率攻击。
 
 #### `counter`（反击）
-- **获取**：通过多次战斗后领悟
-- **效果**：受到攻击时自动反击，造成50%伤害
-- **消耗**：被动技能，无需主动使用
+- **获取**：当前实现无获取途径
+- **效果**：当前战斗未实现“自动反击”触发（仅有技能数据定义）
 
 #### `heal_light`（微光治愈）
-- **获取**：向草药师学习
+- **获取**：`herbalist_encounter` 学习草药知识，或草药师服务 `teach_heal`
 - **效果**：恢复15点HP
-- **消耗**：消耗1点SP，需要神秘草药
+- **消耗**：消耗 1 点 SP；冷却 1 回合
+
+注：若背包中有 `mystic_herb`，当前实现会额外消耗 1 个并获得更强效果。
 
 #### `stealth`（隐身）
-- **获取**：从流浪者处获得
+- **获取**：当前实现无获取途径（技能已定义，且战斗已实现闪避效果）
 - **效果**：下回合回避率+80%
-- **消耗**：消耗2点SP，需要护身符
+- **消耗**：消耗 2 点 SP；冷却 4 回合
 
 #### `power_strike`（强力击）
 - **获取**：职业起源回忆（战士）
@@ -435,9 +461,8 @@ NPC通过事件系统触发，具有以下特征：
 ### 6.1 材料类物品
 
 #### `iron_ingot`（铁锭）
-- **获取**：铁匠锻造，消耗铁矿石x3
+- **获取**：铁匠事件/服务或 `refine_iron` 配方（消耗铁矿石 x3）；部分敌人也会掉落
 - **用途**：高级锻造配方材料
-- **价值**：交易价值8金币
 
 #### `mystic_herb`（神秘草药）
 - **获取**：草药师识别，从森林深处采集
@@ -450,9 +475,9 @@ NPC通过事件系统触发，具有以下特征：
 - **稀有度**：稀有物品
 
 #### `spirit_stone`（灵石）
-- **获取**：神社事件或流浪者交易
-- **用途**：技能升级材料
-- **效果**：携带时所有技能威力+20%
+- **获取**：部分敌人掉落 / 流浪者事件交易 / 任务奖励
+- **用途**：稀有材料（配方输入、资源转化）
+- **效果**：当前实现 `combat.type = skill_boost` 仅占位，无实际战斗效果
 
 ### 6.2 战斗道具
 
@@ -468,8 +493,7 @@ NPC通过事件系统触发，具有以下特征：
 
 #### `thieves_tools`（盗贼工具）
 - **获取**：游商交易或特殊事件
-- **效果**：在某些场景中解锁额外选项
-- **剧情影响**：影响某些NPC的态度
+- **用途/效果**：当前实现暂无专属交互（可作为稀有掉落/任务奖励保存）
 
 ---
 
@@ -480,27 +504,22 @@ NPC通过事件系统触发，具有以下特征：
 #### `shadow_beast`（暗影兽）
 - **位置**：森林深处，夜晚遇到
 - **特征**：高回避率，低HP
-- **技能**：隐身、偷袭
+- **特征（实现）**：`traits: ["evasion"]`（战斗中有概率闪避）
 - **掉落**：兽牙、盗贼工具
 
 #### `cursed_miner`（被诅咒的矿工）
 - **位置**：废矿深处
-- **特征**：高攻击力，会施加诅咒
-- **技能**：重击、诅咒攻击
+- **特征（数据）**：`traits: ["curses", "heavy_attack"]`（当前战斗未实现）
 - **掉落**：铁锭、灵石
 
 #### `possessed_tree`（被附身的树）
 - **位置**：杉径深处
-- **特征**：高防御，会召唤小怪
-- **技能**：根须缠绕、召唤
+- **特征（数据）**：`traits: ["summon", "high_def"]`（当前战斗未实现）
 - **掉落**：神秘草药、木材
 
-### 7.2 敌人AI改进
+### 7.2 备注
 
-- **智能选择**：敌人根据玩家状态选择攻击方式
-- **协作机制**：多个敌人会有配合攻击
-- **状态变化**：敌人在不同血量阶段改变行为
-- **特殊抗性**：特定敌人对某些攻击类型有抗性
+当前战斗只实现了 `evasion` trait 的闪避逻辑；其余 trait（`curses` / `heavy_attack` / `summon` / `high_def`）仅存在于数据中，后续会在“先改 story.md 再改代码”的流程下补齐。
 
 ---
 
@@ -717,3 +736,86 @@ DATA.equipmentBonuses = {
 - 战士终极配装：master_blade (+5) + plate_armor (+3) + rare x2 (+1/+1) = atk 9, def 5
 - 法师终极配装：runic_staff (+1/+5) + warding_robe (+1/+2) + magic x2 (+3 mp) = atk 4, def 1, maxMp 20
 - 工程师终极配装：scrap_pistol (+3) + plate_armor (+3) + tech x2 (+3 en) = atk 6, def 3, maxEn 13
+
+---
+
+## 11. 爽点矩阵（目标实现：先改本文，再改代码）
+
+本节定义下一阶段的设计合同：让每个道具/技能都有独特意义与可观测的爽点。
+
+实现规则：任何玩法改动必须先更新本节（以及相关章节），再落地到代码与测试。
+
+### 11.1 设计原则（把爽点做成“看得见的决策”）
+
+- 锁住的选项要可见：prompt 中宁可显示“灰色不可选 + 需要条件”，也不要直接隐藏。
+- 读条要清晰：高威胁招式必须提前 1 回合在 log 中提示（例如“它开始蓄力重击”）。
+- 对策不做二元：避免“没有某道具就必死/必卡关”，改为软克制（减伤/打断/降低概率/缩短读条）。
+- 每个强力效果都有代价：消耗品、冷却、SP/MP/EN、占用稀有材料、或牺牲时间/金币。
+- 爽点必须可观测：触发时输出明确 log 文案（后续测试将用这些文案做断言）。
+
+### 11.2 Trait -> Counter 矩阵（敌人“出题”，玩家“解题”）
+
+| trait_id | 代表敌人 | 玩家看到的提示（示例） | 主要惩罚 | 主要对策（至少 2 条，且不应互相重复） |
+|---|---|---|---|---|
+| `evasion` | `shadow_beast` / `wolf` / `clockwork_spider` | “它的身形在雾里忽隐忽现。” | 普攻更容易落空（输出不稳定） | `repeating_crossbow`（降低闪避概率）、`focus`（下一击锁定命中）、`deploy_turret`（锁定后降低闪避） |
+| `high_def` | `crystal_golem` / `crystal_overseer` / `possessed_tree` | “护甲像岩层一样闭合。” | 物理伤害被明显压低（战斗拖长） | `fireball`/`arcane_drain`（魔法破防）、`shock_swarm`（持续伤害绕过防御感）、`explosive_trap`（爆发破甲） |
+| `heavy_attack` | `cursed_miner` / `clockwork_titan` / `mine_warlord` | “它开始蓄力。”（下一回合重击） | 下一回合高伤害（容易被一波带走） | `defend`（显著减伤）、`warding_talisman`（硬吃保险）、`stealth`（躲过重击并反打）、`bound_charm`（打断蓄力）、`counter`（格挡成功后反击） |
+| `curses` | `cursed_miner` / `mine_warlord` | “黑灰缠上你的手腕。” | 进入 `cursed` 状态（后续受伤更重） | `purify`（清除诅咒并反杀）、`village_homecoming_cursed`（花钱驱散）、`warding_talisman`（减少被打穿的风险） |
+| `summon` | `possessed_tree` | “根须在地面下翻涌。”（召唤/堆叠） | 召唤物/缠绕堆叠让战斗失控（持续掉血或减益） | `sweep`（清理召唤物并制造输出窗口）、`explosive_trap`（爆发清场）、`bound_charm`（阻止其连续召唤） |
+
+注：上述为目标实现。实现时要保证：每个 trait 在第一次出现之前，至少有 2 条对策是可达且可理解的。
+
+### 11.3 道具爽点矩阵（27/27）
+
+| item_id | 核心意义（独特价值） | 爽点时刻（示例） | 代价/限制 | 主要联动/克制 | 获取（目标） |
+|---|---|---|---|---|---|
+| `rice` | 基础粮食，驱动“做饭→出行”循环 | 缺血但不必回村：先做饭团再上路 | 占用时间/火坑 | `cook_rice`、`shrine_offering` | `find_rice`（village） |
+| `onigiri` | 早期回血 + 供台交换资源（把生存换成控制） | Boss 前供上一枚，换到关键缚符 | 消耗品 | `shrine_offering`（换 `bound_charm`） | `cook_rice`、`village_homecoming_*`、`shrine_guardian` 掉落 |
+| `cedar_wood` | 基础材料（火坑/武器） | 早期快速做出火坑，开启整套循环 | 采集耗时 | 锻造/制作主材料 | `gather_wood`、`bandit` 掉落、交易事件 |
+| `iron_ore` | 核心矿料 + 风险收益点（黑光矿脉） | “再多拿 2 块，但背上不祥”这种抉择 | 采集耗时；可能带 `cursed` | `forge_iron_blade`、`refine_iron`、`sell_ore`、`mine_cursed_ore` | `mine_ore`、交易/服务 |
+| `herbs` | 小回复 + 万用原料（符/茶/药） | 低血时用一把草续命，再回村提炼 | 消耗品（若直接吃） | `bind_charm`、`craft_focus_tea`、`brew_health_potion` | `forest_herbs`、`village_homecoming_forest` |
+| `paper_charm` | 符系分支核心材料 | 一张纸符换来一次“跳过敌人回合” | 不可直接用（需制作） | `bind_charm`、`enchant_warding_talisman` | `shrine_charm`、`oni_wisp` 掉落 |
+| `bound_charm` | 节奏控制（打断/偷回合） | 敌人蓄力重击时掷出：它动作一滞 | 战斗消耗品 | 反制 `heavy_attack` / `summon` | `bind_charm`、`shrine_offering` |
+| `iron_blade` | 开荒武器 + 解锁 `purify`（驱邪线的“开门钥匙”） | 面对诅咒/灵体时，铁刃让你第一次“像个猎人” | 需要材料与时间；占用武器槽 | 允许 `purify`；对灵体额外伤害 | `forge_iron_blade`（锻造） |
+| `shrine_relic` | 结局钥匙（封印/保留） | 山口抉择：手里那件东西决定世界走向 | 关键道具（通常不该随意消耗） | `pass_ending` | `shrine_guardian` 必掉 |
+| `iron_ingot` | 中后期锻造瓶颈（迫使“精炼/出售/换装备”的经济决策） | 你决定把矿石卖掉换钱，还是押注打造神器 | 需要矿石与时间；机会成本 | `forge_master_blade`、`forge_plate_armor` 等 | `refine_iron`、敌人掉落、铁匠服务 |
+| `mystic_herb` | 稀有催化剂（让治疗/法术更值回票价） | 决胜时刻用它把一次治疗变成翻盘 | 稀有、消耗品 | 强化 `heal_light` / 高级配方 | 草药师识别/购买；`possessed_tree` 掉落 |
+| `monster_fang` | 武器升级材料（让你去追猎“特定怪”而非无脑刷） | 为了 2 颗兽牙，你愿意再进一次雾林 | 掉落稀有；机会成本 | `forge_master_blade` / `upgrade_weapon` | `shadow_beast`/`wolf`/`mine_warlord` 掉落 |
+| `spirit_stone` | 技能强化石（持有即增强技能；打造装备会消耗它） | “灵石共鸣”：关键技能伤害/治疗明显提升 | 作为材料会被消耗；稀有 | 强化所有技能；与多技能流绑定 | `cursed_miner`/`crystal_golem`/Boss 掉落；流浪者购买；任务奖励 |
+| `health_potion` | 应急大回复（容错） | 血线见底时一口回血把战斗拉回正轨 | 战斗消耗品 | 搭配 `warding_talisman` 顶住重击 | `brew_health_potion`、任务奖励 |
+| `focus_tea` | 速效爆发药（短窗口高暴击） | 你先喝茶再强力击：一回合打出爆发 | 战斗消耗品 | 与 `power_strike` / `repeating_crossbow` 协同 | `craft_focus_tea`、任务奖励 |
+| `explosive_trap` | 破防/清场爆发（对召唤与高防尤其好用） | 召唤物堆起来前，一炸清空节奏 | 战斗消耗品 | 反制 `summon`、压制 `high_def` | `assemble_explosive_trap`、`repair_auto_turret`、任务奖励 |
+| `warding_talisman` | 护身保险（重击窗口的最稳解法） | 看到蓄力重击，你开符硬吃不死 | 战斗消耗品 | 反制 `heavy_attack`、保底过关 | `enchant_warding_talisman`、任务奖励 |
+| `thieves_tools` | 工具钥匙（解锁“隐藏选项/捷径/宝箱”） | prompt 里出现“撬开侧门（需要盗贼工具）”，你直接拿到稀有奖励 | 作为开锁工具可设定为消耗品；机会成本 | 解锁 `repeating_crossbow` 获取线；解锁 `stealth` 学习线 | `shadow_beast` 掉落；`wanderer_encounter` 获得；任务奖励 |
+| `master_blade` | 终局武器：稳定输出（flat bonus），让“高防 Boss 也会掉血” | 你第一次感觉“这把刀不讲道理” | 稀有材料消耗；占用武器槽 | 对 `high_def` 更友好；允许 `purify` | `forge_master_blade` / `upgrade_weapon` |
+| `mana_crystal` | 法师资源（支撑 MP 与奥术装备组合） | 法师把一次回合换成资源，后面连放法术 | 采集耗时 | `runic_staff` / `warding_robe` / 法师法术 | `crystal_cave` 探索；转化；掉落 |
+| `scrap_metal` | 工程师资源（支撑 EN 与科技装备组合） | 你靠科技资源打造陷阱/炮塔，走出另一条路 | 采集耗时 | `scrap_pistol` / `repair_auto_turret` | `ancient_lab` 探索；掉落 |
+| `heavy_blade` | 战士武器（高 atk；解锁横扫；强力击收益最大） | 一刀劈下去，数字就是爽 | 占用武器槽 | 解锁 `sweep`（目标）；强化 `power_strike` 价值 | `forge_heavy_blade` |
+| `runic_staff` | 法师武器（提高 maxMp，让法术链成立） | 法力上限变大后，法师终于“像法师” | 占用武器槽 | 强化法师技能续航 | `craft_runic_staff` |
+| `scrap_pistol` | 工程师武器（稳定输出；偏向对付硬目标） | 你用科技打穿高防怪，不用硬磨 | 占用武器槽 | 与 `deploy_turret` / `shock_swarm` 协同 | `assemble_scrap_pistol` |
+| `plate_armor` | 坦度核心（让你敢吃一记重击不死） | 面对重击怪，你能站着打完 | 占用防具槽 | 与 `counter` / `warding_talisman` 协同 | `forge_plate_armor` |
+| `warding_robe` | 法师防具（防御+法力；把“脆皮法师”变成“能站住的法师”） | 你第一次能边挨打边抽蓝 | 占用防具槽；消耗稀有材料 | 与 `arcane_drain` / `purify` 协同 | `stitch_warding_robe` |
+| `repeating_crossbow` | 精准武器（降低敌人闪避带来的波动） | 打闪避怪时不再“空刀” | 占用武器槽；可能牺牲爆发 | 反制 `evasion`（软克制：降低闪避率） | 目标：通过 `thieves_tools` 解锁的宝箱/事件获得，或新增工程师制作线 |
+
+### 11.4 技能爽点矩阵（12/12）
+
+| skill_id | 核心意义（独特价值） | 爽点时刻（示例） | 代价/限制 | 主要联动/克制 | 获取（目标） |
+|---|---|---|---|---|---|
+| `purify` | 驱邪与清咒（遇到诅咒/灵体时的“翻盘按钮”） | 你带着不祥使出破邪斩：伤害翻倍并净化 | 每战 1 次；需要武器允许 | 反制 `curses`；对灵体高效 | 锻造铁刃；铁匠事件可学 |
+| `focus` | 锁定破绽（把一回合变成“必中的关键一击”） | 闪避怪面前凝神：下一击命中并高暴击 | SP 消耗 + 冷却 | 反制 `evasion`；与 `power_strike` 协同 | 铁匠服务 `teach_focus` |
+| `sweep` | 清场/扫荡（专门处理召唤/堆叠类麻烦） | 召唤物堆起时一招清空节奏 | SP 消耗 + 冷却 | 反制 `summon`；与陷阱协同 | 目标：铁匠服务教授（需重剑或相关条件） |
+| `counter` | 防守反击（把挨打变成输出） | 敌人重击落下，你格挡并触发反击 | 被动；触发条件明确 | 反制 `heavy_attack`；与 `plate_armor` 协同 | 目标：击败/见识重击后由铁匠教授或事件领悟 |
+| `heal_light` | 战斗内续航（把 SP 变成生命线） | 你在濒死边缘抬一口血，继续压制 | SP 消耗 + 冷却；可被打断/压制 | 与 `mystic_herb`/药剂协同 | 草药师事件/服务教授 |
+| `stealth` | 躲招与翻盘（把一回合变成“免伤窗口”） | 躲掉蓄力重击后反打一套 | SP 消耗 + 冷却 | 反制 `heavy_attack`；与 `counter`/`bound_charm` 协同 | 目标：流浪者教授（可要求 `thieves_tools`） |
+| `power_strike` | 物理爆发（把优势转成击杀） | 破绽出现时一击打穿血线 | SP 消耗 + 冷却 | 与 `focus`/茶/重剑协同 | 战士起源 |
+| `fireball` | 魔法破防（高防怪的标准解） | 打岩层护甲怪时仍能稳定掉血 | MP 消耗 + 冷却 | 反制 `high_def` | 法师起源 |
+| `deploy_turret` | 科技爆发（工程师的“先手压制”） | 开局布炮塔，立刻抢到节奏 | EN 消耗 + 冷却 | 与 `shock_swarm` 协同；可作为反制闪避的辅助 | 工程师起源 |
+| `war_cry` | 压制（让敌人伤害变得可控） | Boss 面前一声战吼，接下来的回合都更稳 | SP 消耗 + 冷却 | 反制 `heavy_attack`（减轻重击伤害） | 战士起源 |
+| `arcane_drain` | 自我循环（输出并补蓝） | 你把敌人的血换成自己的法力 | MP 消耗 + 冷却 | 对长战有效；配合法师装备 | 法师起源 |
+| `shock_swarm` | 持续压榨（长战/高防的效率解） | 一次释放，后面每回合都在收利息 | EN 消耗 + 冷却 | 反制 `high_def`（通过持续伤害感） | 工程师起源 |
+
+### 11.5 落地验收（后续实现必须满足）
+
+- 每个道具/技能至少有 1 条“可观测爽点文案”（log 断言）与 1 条“可达性证明”（确定能获得/能触发）。
+- `thieves_tools` / `repeating_crossbow` / `spirit_stone` / `sweep` / `stealth` / `counter` 必须优先补齐：这是“当前存在但没意义/不可达”的最大体验洞。
+- traits 的实现必须先写测试，再进战斗逻辑，并用多种子回归验证稳定性。

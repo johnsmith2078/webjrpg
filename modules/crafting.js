@@ -37,8 +37,14 @@ export function craft(state, recipeId) {
     if (state.inventory[itemId] <= 0) delete state.inventory[itemId];
   }
   for (const [itemId, qty] of Object.entries(r.outputs || {})) {
-    state.inventory[itemId] = Number(state.inventory[itemId] || 0) + Number(qty || 0);
-    recordItemGain(state, itemId, qty);
+    const amount = Number(qty || 0);
+    if (amount <= 0) continue;
+    if (itemId === "gold") {
+      state.player.gold += amount;
+      continue;
+    }
+    state.inventory[itemId] = Number(state.inventory[itemId] || 0) + amount;
+    recordItemGain(state, itemId, amount);
   }
   if (r.effects) {
     if (r.effects.setFlag) state.flags[r.effects.setFlag] = true;
@@ -62,10 +68,11 @@ export function craft(state, recipeId) {
       }
     }
   }
+  state.flags[`crafted_${recipeId}`] = true;
   state.timeMin += Number(r.timeCostMin || 15);
   
   const outputItems = Object.entries(r.outputs || {}).map(([itemId, qty]) => {
-    const itemName = DATA.items[itemId]?.name || itemId;
+    const itemName = itemId === "gold" ? "金币" : (DATA.items[itemId]?.name || itemId);
     return `${itemName} x${qty}`;
   }).join("、");
   
