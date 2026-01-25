@@ -1,4 +1,5 @@
 import { DATA } from "./data.js";
+import { recordItemGain } from "./quests.js";
 import { hasAllFlags, nowId } from "./utils.js";
 
 export function listAvailableRecipes(state) {
@@ -37,6 +38,7 @@ export function craft(state, recipeId) {
   }
   for (const [itemId, qty] of Object.entries(r.outputs || {})) {
     state.inventory[itemId] = Number(state.inventory[itemId] || 0) + Number(qty || 0);
+    recordItemGain(state, itemId, qty);
   }
   if (r.effects) {
     if (r.effects.setFlag) state.flags[r.effects.setFlag] = true;

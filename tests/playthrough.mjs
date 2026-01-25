@@ -1,5 +1,7 @@
 import { createInitialState } from "../modules/state.js";
 import { createGame } from "../modules/game.js";
+import { DATA } from "../modules/data.js";
+import { derivePlayerStats } from "../modules/stats.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,6 +10,7 @@ function assert(cond, msg) {
 }
 
 function snapshot(state) {
+  const derived = derivePlayerStats(state);
   const inv = Object.entries(state.inventory)
     .filter(([, q]) => q > 0)
     .sort((a, b) => a[0].localeCompare(b[0]));
@@ -18,16 +21,24 @@ function snapshot(state) {
   return {
     timeMin: state.timeMin,
     location: state.location,
-    hp: `${state.player.hp}/${state.player.maxHp}`,
-    atk: state.player.atk,
-    def: state.player.def,
+    hp: `${state.player.hp}/${derived.maxHp}`,
+    atk: derived.atk,
+    def: derived.def,
     gold: state.player.gold,
+    equipment: state.equipment || null,
     inv,
     flags,
     gameOver: state.gameOver,
     inCombat: !!state.combat,
     enemy: state.combat ? state.combat.enemyId : null
   };
+}
+
+function canPurify(state) {
+  const weaponId = state.equipment && state.equipment.weapon ? state.equipment.weapon : null;
+  const weapon = weaponId ? DATA.items[weaponId] : null;
+  const combat = weapon && weapon.combat && typeof weapon.combat === "object" ? weapon.combat : null;
+  return !!(combat && Array.isArray(combat.allowsSkills) && combat.allowsSkills.includes("purify"));
 }
 
 function countItem(state, id) {
@@ -74,7 +85,8 @@ function maybeHeal(game) {
   const s = game.getState();
   if (
     s.combat &&
-    s.player.hp <= 15 &&
+    // heal_light uses SP (limited per fight); save it for when it matters.
+    s.player.hp <= 10 &&
     s.flags.skills_learned_heal_light &&
     (s.player.sp || 0) >= 1 &&
     (!s.combat.skillCooldowns || !s.combat.skillCooldowns.heal_light)
@@ -117,7 +129,8 @@ function resolveCombat(game) {
       const enemyId = cs.combat ? cs.combat.enemyId : null;
       const isTough = !!enemyId && toughEnemies.has(enemyId);
       const isBoss = enemyId === "crystal_overseer" || enemyId === "clockwork_titan" || enemyId === "mine_warlord";
-      const useConsumables = enemyId === "mine_warlord";
+      // Boss fights are tuned to assume some resource usage; keep the test stable by spending defensively here.
+      const useConsumables = isBoss;
 
       if (cs.combat && enemyId === "shrine_guardian" && (cs.inventory.bound_charm || 0) > 0) {
         game.handleChoice("use:bound_charm");
@@ -142,13 +155,14 @@ function resolveCombat(game) {
         !cs.combat.enemyStun
       ) {
         game.handleChoice("use:bound_charm");
-      } else if (cs.combat && enemyId === "shrine_guardian" && cs.flags.has_iron_blade && !cs.combat.usedPurify) {
+      } else if (cs.combat && enemyId === "shrine_guardian" && canPurify(cs) && !cs.combat.usedPurify) {
         game.handleChoice("skill:purify");
-      } else if (cs.combat && isTough && cs.flags.has_iron_blade && !cs.combat.usedPurify) {
+      } else if (cs.combat && isTough && canPurify(cs) && !cs.combat.usedPurify) {
         game.handleChoice("skill:purify");
       } else if (
         cs.combat &&
         cs.flags.skills_learned_power_strike &&
+        !isBoss &&
         (cs.player.sp || 0) >= 2 &&
         (!cs.combat.skillCooldowns || !cs.combat.skillCooldowns.power_strike)
       ) {
@@ -166,7 +180,8 @@ function resolveCombat(game) {
       }
     }
     if (game.getState().gameOver) {
-      throw new Error(`战斗失败：游戏结束 (enemy=${lastEnemy})`);
+      const snap = snapshot(game.getState());
+      throw new Error(`战斗失败：游戏结束 (enemy=${lastEnemy})\n${JSON.stringify(snap, null, 2)}`);
     }
   }
   throw new Error("战斗未在上限步数内结束");
@@ -402,7 +417,7 @@ export function runPlaythrough(opts = {}) {
   game.handleChoice("craft");
   game.handleChoice("craft:forge_iron_blade");
   assert(game.getState().flags.has_iron_blade, "锻铁刃后应有 has_iron_blade");
-  assert(game.getState().player.atk >= 5, "锻铁刃应提升攻击");
+  assert(derivePlayerStats(game.getState()).atk >= 5, "锻铁刃应提升攻击");
   assert(countItem(game.getState(), "iron_blade") >= 1, "应获得 道具：铁刃");
 
   // 8) 回到古神社刷出守护者并击败
@@ -521,6 +536,13 @@ export function runPlaythrough(opts = {}) {
     60,
     "击败晶域监视者"
   );
+
+  // 9.5) 备一件基础护甲：降低后续 Boss 战的波动
+  if (!game.getState().flags.has_warding_robe) {
+    game.handleChoice("craft");
+    game.handleChoice("craft:stitch_warding_robe");
+  }
+  assert(game.getState().flags.has_warding_robe, "应能制作护法长袍用于后续战斗");
 
   // 10) 击败分支首领：发条巨像
   travelTo(game, "forest_path");

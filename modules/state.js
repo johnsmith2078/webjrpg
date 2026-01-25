@@ -25,6 +25,11 @@ export function createInitialState(seedInput) {
       gold: 0,
       sp: 3
     },
+
+    equipment: {
+      weapon: null,
+      armor: null
+    },
     inventory: {},
     flags: {},
 

@@ -32,6 +32,7 @@ function parseArgs(argv) {
 
 function main() {
   const { seeds, seedBase } = parseArgs(process.argv.slice(2));
+  run("node", ["tests/equipment.mjs"]);
   run("node", ["tests/class_paths.mjs"]);
   run("node", ["tests/playthrough.mjs", "--silent"]);
   run("node", ["tests/playthrough_seeds.mjs", String(seeds), String(seedBase)]);

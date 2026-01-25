@@ -1,5 +1,7 @@
 import { DATA } from "./data.js";
+import { recordItemGain } from "./quests.js";
 import { clamp, nowId } from "./utils.js";
+import { derivePlayerStats } from "./stats.js";
 
 function damage(atk, def, rng, bonus) {
   const roll = rng.nextInt(0, 2);
@@ -32,8 +34,10 @@ export function startCombat(state, enemyId) {
   if (state.player.en === undefined) state.player.en = Number(state.player.maxEn || 10);
 
   state.player.sp = 3;
-  state.player.mp = Number(state.player.maxMp || 10);
-  state.player.en = Number(state.player.maxEn || 10);
+  const derived = derivePlayerStats(state);
+  state.player.mp = Number(derived.maxMp || state.player.maxMp || 10);
+  state.player.en = Number(derived.maxEn || state.player.maxEn || 10);
+  state.player.hp = clamp(Number(state.player.hp || 0), 0, Number(derived.maxHp || state.player.maxHp || 20));
   
   const name = e.name || enemyId;
   state.log.push({ id: nowId(), type: "rare", text: `「${name}」现身了。` });
@@ -51,6 +55,13 @@ export function resolveCombatAction(state, rng, action) {
   const enemyName = e.name || c.enemyId;
   const log = [];
 
+  const derived = derivePlayerStats(state);
+  const effAtk = Number(derived.atk || 0);
+  const effDef = Number(derived.def || 0);
+  const weaponId = state.equipment && state.equipment.weapon ? state.equipment.weapon : null;
+  const weapon = weaponId ? DATA.items[weaponId] : null;
+  const weaponCombat = weapon && weapon.combat && typeof weapon.combat === "object" ? weapon.combat : {};
+
   const a = (action || "").toLowerCase();
   c.defending = false;
 
@@ -67,12 +78,13 @@ export function resolveCombatAction(state, rng, action) {
   }
 
   if (a === "attack") {
-    const spiritBonus =
-      state.flags.has_iron_blade && (c.enemyId === "oni_wisp" || c.enemyId === "shrine_guardian") ? 1 : 0;
-    const weaponBonus = state.flags.has_master_blade ? 3 : 0;
+    let weaponBonus = Number(weaponCombat.damageBonus || 0);
+    if (weaponCombat.damageBonusVs && weaponCombat.damageBonusVs[c.enemyId]) {
+      weaponBonus += Number(weaponCombat.damageBonusVs[c.enemyId] || 0);
+    }
     const isCrit = c.statusEffects.crit_boost > 0 && rng.nextFloat() < 0.8;
-    const critBonus = isCrit ? Math.floor(state.player.atk * 0.5) : 0;
-    const dmg = damage(state.player.atk, e.def, rng, spiritBonus + weaponBonus + critBonus);
+    const critBonus = isCrit ? Math.floor(effAtk * 0.5) : 0;
+    const dmg = damage(effAtk, e.def, rng, weaponBonus + critBonus);
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     
     if (isCrit) {
@@ -125,7 +137,8 @@ export function resolveCombatAction(state, rng, action) {
       state.inventory[itemId] = qty - 1;
       if (state.inventory[itemId] <= 0) delete state.inventory[itemId];
       const before = state.player.hp;
-      state.player.hp = clamp(state.player.hp + heal, 0, state.player.maxHp);
+      const derived = derivePlayerStats(state);
+      state.player.hp = clamp(state.player.hp + heal, 0, Number(derived.maxHp || state.player.maxHp || 20));
       log.push({ id: nowId(), type: "system", text: `你使用了「${item.name}」，恢复 ${state.player.hp - before} 点体力。` });
     } else {
       log.push({ id: nowId(), type: "system", text: "没有任何效果。" });
@@ -176,8 +189,8 @@ export function resolveCombatAction(state, rng, action) {
   const bonusDef = c.defending ? 2 : 0;
   const cursedPenalty = state.flags.cursed ? 1 : 0;
   const wardReduction = c.statusEffects.ward > 0 ? Math.floor(e.atk * 0.5) : 0;
-  const enemyDmg = Math.max(1, damage(e.atk, state.player.def + bonusDef, rng, cursedPenalty) - wardReduction);
-  state.player.hp = clamp(state.player.hp - enemyDmg, 0, state.player.maxHp);
+  const enemyDmg = Math.max(1, damage(e.atk, effDef + bonusDef, rng, cursedPenalty) - wardReduction);
+  state.player.hp = clamp(state.player.hp - enemyDmg, 0, Number(derived.maxHp || state.player.maxHp || 20));
   
   if (c.statusEffects.ward > 0) {
     log.push({ id: nowId(), type: "system", text: `护身符抵挡了部分伤害，你受到 ${enemyDmg} 点伤害。` });
@@ -228,7 +241,11 @@ function handleSkill(state, skillId, rng, log) {
   }
 
   if (skillId === "purify") {
-    if (!state.flags.has_iron_blade) {
+    const weaponId = state.equipment && state.equipment.weapon ? state.equipment.weapon : null;
+    const weapon = weaponId ? DATA.items[weaponId] : null;
+    const combat = weapon && weapon.combat && typeof weapon.combat === "object" ? weapon.combat : null;
+    const allows = !!(combat && Array.isArray(combat.allowsSkills) && combat.allowsSkills.includes("purify"));
+    if (!allows) {
       log.push({ id: nowId(), type: "system", text: "你现在做不到。" });
     } else if (c.usedPurify) {
       log.push({ id: nowId(), type: "system", text: "这一招已经用过了。" });
@@ -257,7 +274,8 @@ function handleSkill(state, skillId, rng, log) {
     log.push({ id: nowId(), type: "rare", text: "你凝神聚力，感知变得敏锐。" });
   } else if (skillId === "sweep") {
     const e = DATA.enemies[c.enemyId];
-    const baseDmg = Math.floor(state.player.atk * (skill.damage_percent / 100));
+    const derived = derivePlayerStats(state);
+    const baseDmg = Math.floor(Number(derived.atk || 0) * (skill.damage_percent / 100));
     const dmg = damage(baseDmg, e.def, rng, 0);
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     log.push({ id: nowId(), type: "rare", text: `横扫！你造成了 ${dmg} 点范围伤害。` });
@@ -282,7 +300,8 @@ function handleSkill(state, skillId, rng, log) {
     log.push({ id: nowId(), type: "rare", text: "你融入阴影，身形变得模糊。" });
   } else if (skillId === "power_strike") {
     const e = DATA.enemies[c.enemyId];
-    const baseAtk = Math.floor(state.player.atk * 1.6);
+    const derived = derivePlayerStats(state);
+    const baseAtk = Math.floor(Number(derived.atk || 0) * 1.6);
     const dmg = damage(baseAtk, e.def, rng, 0);
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     log.push({ id: nowId(), type: "rare", text: `强力击！你造成了 ${dmg} 点伤害。` });
@@ -325,6 +344,7 @@ function awardVictory(state, enemyId, enemy, log) {
       const q = Number(qty || 0);
       if (q <= 0) continue;
       state.inventory[itemId] = Number(state.inventory[itemId] || 0) + q;
+      recordItemGain(state, itemId, q);
       const name = (DATA.items[itemId] && DATA.items[itemId].name) || itemId;
       log.push({ id: nowId(), type: "system", text: `获得：${name} x${q}` });
     }

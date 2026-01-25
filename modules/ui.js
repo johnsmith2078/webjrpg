@@ -1,5 +1,6 @@
 import { DATA } from "./data.js";
 import { exportState, importState, saveState } from "./save.js";
+import { derivePlayerStats, getItemSlot } from "./stats.js";
 
 function el(id) {
   const node = document.getElementById(id);
@@ -14,6 +15,8 @@ export function mountApp({ game }) {
   const $statusHP = el("statusHP").querySelector(".chip__v");
   const $statusMP = el("statusMP").querySelector(".chip__v");
   const $statusEN = el("statusEN").querySelector(".chip__v");
+  const $statusATK = el("statusATK").querySelector(".chip__v");
+  const $statusDEF = el("statusDEF").querySelector(".chip__v");
   const $statusGold = el("statusGold").querySelector(".chip__v");
 
   const $log = el("log");
@@ -34,6 +37,8 @@ export function mountApp({ game }) {
   const $inventoryItemTemplate = el("inventoryItemTemplate");
   const $useSelected = el("useSelected");
   const $dropSelected = el("dropSelected");
+  const $equipSelected = el("equipSelected");
+  const $unequipSelected = el("unequipSelected");
   const $inventoryDesc = el("inventoryDesc");
 
   const $settingsToggle = el("settingsToggle");
@@ -83,13 +88,16 @@ export function mountApp({ game }) {
   }
 
   function renderHud(state) {
+    const derived = derivePlayerStats(state);
     const loc = DATA.locations[state.location];
     $sceneTitle.textContent = loc ? loc.name : state.location;
     const day = Math.floor(state.timeMin / 1440) + 1;
     $statusDay.textContent = String(day);
-    $statusHP.textContent = `${state.player.hp}/${state.player.maxHp}`;
-    $statusMP.textContent = `${Number(state.player.mp || 0)}/${Number(state.player.maxMp || 0)}`;
-    $statusEN.textContent = `${Number(state.player.en || 0)}/${Number(state.player.maxEn || 0)}`;
+    $statusHP.textContent = `${state.player.hp}/${Number(derived.maxHp || state.player.maxHp || 0)}`;
+    $statusMP.textContent = `${Number(state.player.mp || 0)}/${Number(derived.maxMp || state.player.maxMp || 0)}`;
+    $statusEN.textContent = `${Number(state.player.en || 0)}/${Number(derived.maxEn || state.player.maxEn || 0)}`;
+    $statusATK.textContent = String(derived.atk);
+    $statusDEF.textContent = String(derived.def);
     $statusGold.textContent = String(state.player.gold);
   }
 
@@ -103,9 +111,13 @@ export function mountApp({ game }) {
       const tag = frag.querySelector(".choice__tag");
 
       if (c.tone === "secondary") btn.classList.add("choice--secondary");
-      if (c.disabled) btn.disabled = true;
+      if (c.disabled) btn.classList.add("choice--disabled");
+      if (c.kind === "category_header") btn.classList.add("choice--category");
+      
+      btn.disabled = c.disabled || c.kind === "category_header";
       btn.setAttribute("data-choice", c.id);
       label.textContent = c.label;
+      
       const kind = c.kind || "";
       const kindZh =
         kind === "action"
@@ -114,9 +126,17 @@ export function mountApp({ game }) {
             ? "行走"
             : kind === "craft"
               ? "制作"
-              : kind === "combat"
-                ? "战斗"
-                : kind;
+              : kind === "talk"
+                ? "交谈"
+                : kind === "dialogue"
+                  ? "对话"
+                  : kind === "service"
+                    ? "服务"
+                : kind === "combat"
+                  ? "战斗"
+                  : kind === "category_header"
+                    ? ""
+                    : kind;
       tag.textContent = kindZh;
 
       if (c.sub) {
@@ -126,7 +146,9 @@ export function mountApp({ game }) {
         btn.appendChild(sub);
       }
 
-      btn.addEventListener("click", () => game.handleChoice(c.id));
+      if (c.kind !== "category_header") {
+        btn.addEventListener("click", () => game.handleChoice(c.id));
+      }
       $choices.appendChild(frag);
     }
   }
@@ -148,6 +170,8 @@ export function mountApp({ game }) {
     selectedInv = null;
     $useSelected.disabled = true;
     $dropSelected.disabled = true;
+    $equipSelected.disabled = true;
+    $unequipSelected.disabled = true;
     $inventoryDesc.textContent = "你携带的东西，会改变故事的回应。";
     const allBtns = $inventoryList.querySelectorAll(".inv__btn");
     for (const b of allBtns) b.classList.remove("inv__btn--selected");
@@ -174,7 +198,10 @@ export function mountApp({ game }) {
       const name = frag.querySelector(".inv__name");
       const meta = frag.querySelector(".inv__meta");
       name.textContent = (DATA.items[id] && DATA.items[id].name) || id;
-      meta.textContent = `x${qty}`;
+      const slot = getItemSlot(DATA.items[id]);
+      const equipped = state.equipment && (state.equipment.weapon === id || state.equipment.armor === id);
+      const slotLabel = slot === "weapon" ? "武器" : slot === "armor" ? "防具" : "";
+      meta.textContent = equipped ? `x${qty} · 已装备${slotLabel ? "(" + slotLabel + ")" : ""}` : `x${qty}`;
       btn.setAttribute("data-item", id);
       
       if (id === selectedInv) {
@@ -190,11 +217,33 @@ export function mountApp({ game }) {
         const itemData = DATA.items[id];
         $inventoryDesc.textContent = itemData.desc || "这个物品没有什么特别的。";
 
-        $useSelected.disabled = false;
-        $dropSelected.disabled = false;
+        syncInventoryActions(game.getState());
       });
       $inventoryList.appendChild(frag);
     }
+  }
+
+  function syncInventoryActions(state) {
+    if (!selectedInv) {
+      $useSelected.disabled = true;
+      $dropSelected.disabled = true;
+      $equipSelected.disabled = true;
+      $unequipSelected.disabled = true;
+      return;
+    }
+
+    const itemData = DATA.items[selectedInv];
+    const qty = Number(state.inventory[selectedInv] || 0);
+    const slot = getItemSlot(itemData);
+    const isEquipped = !!(slot && state.equipment && state.equipment[slot] === selectedInv);
+    const inCombat = !!state.combat;
+
+    const canUse = !!(itemData && (itemData.heal || itemData.combat)) && !slot;
+
+    $useSelected.disabled = !canUse || qty <= 0;
+    $dropSelected.disabled = qty <= 0;
+    $equipSelected.disabled = inCombat || !slot || qty <= 0 || isEquipped;
+    $unequipSelected.disabled = inCombat || !slot || !isEquipped;
   }
 
   function openSettings() {
@@ -222,6 +271,18 @@ export function mountApp({ game }) {
   $useSelected.addEventListener("click", () => {
     if (!selectedInv) return;
     game.useItem(selectedInv);
+  });
+
+  $equipSelected.addEventListener("click", () => {
+    if (!selectedInv) return;
+    game.equipItem(selectedInv);
+  });
+
+  $unequipSelected.addEventListener("click", () => {
+    if (!selectedInv) return;
+    const slot = getItemSlot(DATA.items[selectedInv]);
+    if (!slot) return;
+    game.unequipSlot(slot);
   });
 
   $dropSelected.addEventListener("click", () => {
@@ -284,6 +345,7 @@ export function mountApp({ game }) {
     renderLog(state);
     renderChoices();
     renderInventory(state);
+    syncInventoryActions(state);
     saveState(state);
   }
 

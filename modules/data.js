@@ -67,7 +67,17 @@ export const DATA = {
     herbs: { name: "苦草", tags: ["medicine"], heal: 4, desc: "苦涩的草药，能止血。" },
     paper_charm: { name: "纸符", tags: ["talisman"], desc: "空白的符纸，还没画上咒文。" },
     bound_charm: { name: "缚符", tags: ["talisman"], combat: { type: "stun", turns: 1 }, desc: "注入了灵力的符咒，能定住敌人。" },
-    iron_blade: { name: "铁刃", tags: ["weapon"], desc: "锋利的铁剑，斩妖除魔。" },
+    iron_blade: {
+      name: "铁刃",
+      tags: ["weapon"],
+      slot: "weapon",
+      stats: { atk: 2 },
+      combat: {
+        allowsSkills: ["purify"],
+        damageBonusVs: { oni_wisp: 1, shrine_guardian: 1 }
+      },
+      desc: "锋利的铁剑，斩妖除魔。"
+    },
     shrine_relic: { name: "神社遗物", tags: ["relic"], desc: "古老的神社遗物，散发着微弱的光。" },
     iron_ingot: { name: "铁锭", tags: ["material", "rare"], desc: "精炼的铁块，锻造高级装备的材料。" },
     mystic_herb: { name: "神秘草药", tags: ["medicine", "rare"], heal: 8, desc: "稀有的草药，蕴含着强大的生命力。" },
@@ -78,15 +88,37 @@ export const DATA = {
     explosive_trap: { name: "爆炸陷阱", tags: ["consumable"], combat: { type: "explosive", damage: [8, 12] }, desc: "简易的陷阱，威力惊人。" },
     warding_talisman: { name: "护身符", tags: ["talisman"], combat: { type: "ward", turns: 2 }, desc: "护身的符咒，能减少受到的伤害。" },
     thieves_tools: { name: "盗贼工具", tags: ["tool"], desc: "一套精致的工具，也许能打开什么。" },
-    master_blade: { name: "神刃", tags: ["weapon", "rare"], desc: "传说中的神刃，无坚不摧。" },
+    master_blade: {
+      name: "神刃",
+      tags: ["weapon", "rare"],
+      slot: "weapon",
+      stats: { atk: 5 },
+      combat: { allowsSkills: ["purify"], damageBonus: 3 },
+      desc: "传说中的神刃，无坚不摧。"
+    },
     mana_crystal: { name: "法力水晶", tags: ["material", "magic"], desc: "闪烁着奥术光辉的水晶。" },
     scrap_metal: { name: "废金属", tags: ["material", "tech"], desc: "生锈的机械零件，可以回收利用。" },
-    heavy_blade: { name: "重剑", tags: ["weapon"], desc: "厚重的铁剑，每一击都势大力沉。" },
-    runic_staff: { name: "符文法杖", tags: ["weapon", "magic"], desc: "刻满符文的法杖，能引导法力。" },
-    scrap_pistol: { name: "废铁手枪", tags: ["weapon", "tech"], desc: "虽然简陋，但能发射致命的弹丸。" },
-    plate_armor: { name: "板甲", tags: ["armor"], desc: "厚实的铁甲，提供极高的防御。" },
-    warding_robe: { name: "护法长袍", tags: ["armor", "magic"], desc: "轻便的长袍，编织了防护法术。" },
-    repeating_crossbow: { name: "连弩", tags: ["weapon", "tech"], desc: "精密的机械弩，能快速射击。" }
+    heavy_blade: {
+      name: "重剑",
+      tags: ["weapon"],
+      slot: "weapon",
+      stats: { atk: 6 },
+      combat: { allowsSkills: ["purify"] },
+      desc: "厚重的铁剑，每一击都势大力沉。"
+    },
+    runic_staff: { name: "符文法杖", tags: ["weapon", "magic"], slot: "weapon", stats: { atk: 1, maxMp: 5 }, desc: "刻满符文的法杖，能引导法力。" },
+    scrap_pistol: { name: "废铁手枪", tags: ["weapon", "tech"], slot: "weapon", stats: { atk: 3 }, desc: "虽然简陋，但能发射致命的弹丸。" },
+    plate_armor: { name: "板甲", tags: ["armor"], slot: "armor", stats: { def: 3 }, desc: "厚实的铁甲，提供极高的防御。" },
+    warding_robe: { name: "护法长袍", tags: ["armor", "magic"], slot: "armor", stats: { def: 1, maxMp: 2 }, desc: "轻便的长袍，编织了防护法术。" },
+    repeating_crossbow: { name: "连弩", tags: ["weapon", "tech"], slot: "weapon", stats: { atk: 3 }, desc: "精密的机械弩，能快速射击。" }
+  },
+
+  equipmentBonuses: {
+    tagCombos: [
+      { id: "combo_magic", name: "奥术共鸣", tag: "magic", count: 2, stats: { maxMp: 3 } },
+      { id: "combo_tech", name: "齿轮共振", tag: "tech", count: 2, stats: { maxEn: 3 } },
+      { id: "combo_rare", name: "珍稀回响", tag: "rare", count: 2, stats: { atk: 1, def: 1 } }
+    ]
   },
 
   recipes: {
@@ -118,7 +150,7 @@ export const DATA = {
       inputs: { iron_ore: 2, cedar_wood: 2 },
       outputs: { iron_blade: 1 },
       timeCostMin: 25,
-      effects: { setFlag: "has_iron_blade", stats: { atk: 2 } },
+      effects: { setFlag: "has_iron_blade" },
       requirements: { flags: ["has_firepit"] },
       hiddenIf: { flags: ["has_iron_blade"] }
     },
@@ -127,8 +159,8 @@ export const DATA = {
       inputs: { iron_ore: 4, cedar_wood: 3 },
       outputs: { heavy_blade: 1 },
       timeCostMin: 40,
-      effects: { setFlag: "has_heavy_blade", stats: { atk: 4 } },
-      requirements: { flags: ["has_firepit", "class_warrior"] },
+      effects: { setFlag: "has_heavy_blade" },
+      requirements: { flags: ["has_firepit", "class_warrior", "has_iron_blade"] },
       hiddenIf: { flags: ["has_heavy_blade"] }
     },
     craft_runic_staff: {
@@ -136,7 +168,7 @@ export const DATA = {
       inputs: { cedar_wood: 4, mana_crystal: 2 },
       outputs: { runic_staff: 1 },
       timeCostMin: 30,
-      effects: { setFlag: "has_runic_staff", stats: { atk: 1, maxMp: 5 } },
+      effects: { setFlag: "has_runic_staff" },
       requirements: { flags: ["has_firepit", "class_mage"] },
       hiddenIf: { flags: ["has_runic_staff"] }
     },
@@ -145,7 +177,7 @@ export const DATA = {
       inputs: { scrap_metal: 5, cedar_wood: 2 },
       outputs: { scrap_pistol: 1 },
       timeCostMin: 50,
-      effects: { setFlag: "has_scrap_pistol", stats: { atk: 3 } },
+      effects: { setFlag: "has_scrap_pistol" },
       requirements: { flags: ["has_firepit", "class_engineer"] },
       hiddenIf: { flags: ["has_scrap_pistol"] }
     },
@@ -158,30 +190,66 @@ export const DATA = {
     },
     repair_auto_turret: {
       name: "组装自动炮塔",
-      inputs: { scrap_metal: 10, iron_ingot: 1 },
+      inputs: { scrap_metal: 10, iron_ore: 3 },
       outputs: { explosive_trap: 3 },
       timeCostMin: 60,
       requirements: { flags: ["class_engineer"] }
     },
     forge_master_blade: {
       name: "锻神刃",
-      inputs: { iron_ingot: 3, monster_fang: 2, spirit_stone: 1 },
+      inputs: { iron_ingot: 2, monster_fang: 2, spirit_stone: 1 },
       outputs: { master_blade: 1 },
       timeCostMin: 45,
-      effects: { setFlag: "has_master_blade", stats: { atk: 5 } },
+      effects: { setFlag: "has_master_blade" },
       requirements: { flags: ["has_iron_blade", "met_blacksmith"] },
       hiddenIf: { flags: ["has_master_blade"] }
     },
+
+    forge_plate_armor: {
+      name: "锻板甲",
+      inputs: { iron_ingot: 2, iron_ore: 2 },
+      outputs: { plate_armor: 1 },
+      timeCostMin: 45,
+      effects: { setFlag: "has_plate_armor" },
+      requirements: { flags: ["has_firepit", "met_blacksmith"] },
+      hiddenIf: { flags: ["has_plate_armor"] }
+    },
+
+    stitch_warding_robe: {
+      name: "缝制护法长袍",
+      inputs: { cedar_wood: 2, mana_crystal: 1, spirit_stone: 1 },
+      outputs: { warding_robe: 1 },
+      timeCostMin: 40,
+      effects: { setFlag: "has_warding_robe" },
+      requirements: { flags: ["has_firepit", "met_herbalist"] },
+      hiddenIf: { flags: ["has_warding_robe"] }
+    },
+
+    refine_iron: {
+      name: "提炼铁锭",
+      inputs: { iron_ore: 3 },
+      outputs: { iron_ingot: 1 },
+      timeCostMin: 15,
+      requirements: { flags: ["has_firepit", "met_blacksmith"] }
+    },
+
+    sell_ore: {
+      name: "出售铁矿石",
+      inputs: { iron_ore: 3 },
+      outputs: { gold: 2 },
+      timeCostMin: 5,
+      requirements: { flags: ["met_blacksmith"] }
+    },
     brew_health_potion: {
       name: "调配生命药水",
-      inputs: { mystic_herb: 2, herbs: 3 },
+      inputs: { herbs: 4 },
       outputs: { health_potion: 2 },
       timeCostMin: 20,
       requirements: { flags: ["met_herbalist"] }
     },
     craft_focus_tea: {
       name: "制作凝神茶",
-      inputs: { mystic_herb: 1, herbs: 1 },
+      inputs: { herbs: 2 },
       outputs: { focus_tea: 1 },
       timeCostMin: 15,
       requirements: { flags: ["met_herbalist"] }
@@ -195,7 +263,7 @@ export const DATA = {
     },
     enchant_warding_talisman: {
       name: "附魔护身符",
-      inputs: { paper_charm: 2, spirit_stone: 1, herbs: 2 },
+      inputs: { paper_charm: 2, herbs: 3 },
       outputs: { warding_talisman: 1 },
       timeCostMin: 30,
       requirements: { flags: ["met_herbalist"] }
@@ -220,6 +288,15 @@ export const DATA = {
       def: 1,
       gold: 12,
       loot: { monster_fang: 1, thieves_tools: 1 },
+      traits: ["evasion"]
+    },
+    wolf: {
+      name: "野狼",
+      hp: 10,
+      atk: 2,
+      def: 0,
+      gold: 8,
+      loot: { monster_fang: 1 },
       traits: ["evasion"]
     },
     cursed_miner: {
@@ -373,6 +450,15 @@ export const DATA = {
         { op: "advanceTime", min: 5 }
       ]
     },
+    forest_wolf: {
+      at: "forest_path",
+      w: 3,
+      text: ["林间传来低吼，几匹野狼盯上了你。"],
+      ops: [
+        { op: "startCombat", enemy: "wolf" },
+        { op: "advanceTime", min: 5 }
+      ]
+    },
 
     cave_mana: {
       at: "crystal_cave",
@@ -449,7 +535,7 @@ export const DATA = {
             label: "走近路（快，但更危险）",
             ops: [
               { op: "advanceTime", min: 5 },
-              { op: "startCombat", enemy: "bandit" }
+              { op: "startCombat", enemy: "wolf" }
             ]
           },
           {
@@ -614,9 +700,9 @@ export const DATA = {
     village_trader: {
       at: "village",
       w: 1,
-      once: true,
+      once: false,
       priority: 4,
-      requirements: { gold: 2, flags: ["has_firepit"] },
+      requirements: { flags: ["has_firepit"] },
       text: ["游商在屋檐下摆开布包：\"要不要换点东西？\""],
       prompt: {
         title: "游商",
@@ -640,6 +726,24 @@ export const DATA = {
             ]
           },
           {
+            id: "buy_iron",
+            label: "用 5 钱换 2 块铁矿石",
+            requires: { gold: 5 },
+            ops: [
+              { op: "spendGold", amt: 5 },
+              { op: "gainItem", item: "iron_ore", qty: 2 }
+            ]
+          },
+          {
+            id: "buy_wood",
+            label: "用 1 钱换 2 块杉木",
+            requires: { gold: 1 },
+            ops: [
+              { op: "spendGold", amt: 1 },
+              { op: "gainItem", item: "cedar_wood", qty: 2 }
+            ]
+          },
+          {
             id: "leave",
             label: "摇摇头离开",
             ops: [
@@ -650,8 +754,7 @@ export const DATA = {
         ]
       },
       ops: []
-    }
-    ,
+    },
 
     village_homecoming_forest: {
       at: "village",
@@ -905,12 +1008,24 @@ export const DATA = {
         choices: [
           {
             id: "buy_rare",
-            label: "购买稀有物品",
+            label: "购买稀有物品（10金币换1灵石）",
             requires: { gold: 10 },
             ops: [
               { op: "spendGold", amt: 10 },
               { op: "gainItem", item: "spirit_stone", qty: 1 },
               { op: "log", text: "流浪者神秘地说：\"此石通古灵，持之能见命运轨迹。\"" },
+              { op: "setFlag", flag: "met_wanderer" },
+              { op: "advanceTime", min: 10 }
+            ]
+          },
+          {
+            id: "buy_fang",
+            label: "购买兽牙（8金币换1个）",
+            requires: { gold: 8 },
+            ops: [
+              { op: "spendGold", amt: 8 },
+              { op: "gainItem", item: "monster_fang", qty: 1 },
+              { op: "log", text: "流浪者递给你一颗兽牙：\"野兽的獠牙，有时比刀剑更锋利。\"" },
               { op: "setFlag", flag: "met_wanderer" },
               { op: "advanceTime", min: 10 }
             ]
@@ -1021,8 +1136,22 @@ export const DATA = {
           upgrade_weapon: {
             name: "升级武器",
             requires: { items: { iron_blade: 1, monster_fang: 2, iron_ingot: 1 } },
-            gives: { master_blade: 1 },
+            gives: { item: "master_blade", qty: 1 },
             cost: 10
+          },
+          refine_iron: {
+            name: "提炼铁锭",
+            requires: { items: { iron_ore: 3 } },
+            gives: { item: "iron_ingot", qty: 1 },
+            cost: 0,
+            description: "用3块铁矿石提炼1个铁锭"
+          },
+          sell_ore: {
+            name: "出售铁矿石",
+            requires: { items: { iron_ore: 3 } },
+            gives: { gold: 2 },
+            cost: 0,
+            description: "卖出3块铁矿石换取2钱"
           },
           teach_focus: {
             name: "教授凝神技能",
@@ -1050,8 +1179,22 @@ export const DATA = {
           identify_herbs: {
             name: "识别草药",
             requires: { items: { herbs: 3 } },
-            gives: { mystic_herb: 1 },
+            gives: { item: "mystic_herb", qty: 1 },
             cost: 3
+          },
+          sell_herbs: {
+            name: "出售草药",
+            requires: { flags: ["met_herbalist"], items: { herbs: 5 } },
+            gives: { gold: 3 },
+            cost: 0,
+            description: "卖出5把草药换取3钱"
+          },
+          buy_mystic: {
+            name: "购买神秘草药",
+            requires: { gold: 20 },
+            gives: { item: "mystic_herb", qty: 1 },
+            cost: 20,
+            description: "用20金币购买1株神秘草药"
           },
           teach_heal: {
             name: "教授治愈技能",
@@ -1097,7 +1240,7 @@ export const DATA = {
       from: "herbalist",
       requirements: { flags: ["met_herbalist"] },
       objectives: [
-        { type: "collect", item: "mystic_herb", qty: 3, description: "采集3株神秘草药" }
+        { type: "collect", item: "mystic_herb", qty: 3, countMode: "acquire", description: "采集3株神秘草药" }
       ],
       rewards: {
         gold: 15,

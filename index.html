@@ -73,6 +73,14 @@
                   <span class="chip__k">能量</span>
                   <span class="chip__v">0/0</span>
                 </span>
+                <span class="chip" id="statusATK" data-kind="atk">
+                  <span class="chip__k">攻击</span>
+                  <span class="chip__v">0</span>
+                </span>
+                <span class="chip" id="statusDEF" data-kind="def">
+                  <span class="chip__k">防御</span>
+                  <span class="chip__v">0</span>
+                </span>
                 <span class="chip" id="statusGold" data-kind="coin">
                   <span class="chip__k">金币</span>
                   <span class="chip__v">0</span>
@@ -142,6 +150,8 @@
         </div>
 
         <div class="drawer__foot" aria-label="背包操作">
+          <button type="button" class="btn" id="equipSelected" disabled>装备</button>
+          <button type="button" class="btn btn--quiet" id="unequipSelected" disabled>卸下</button>
           <button type="button" class="btn" id="useSelected" disabled>使用</button>
           <button type="button" class="btn btn--quiet" id="dropSelected" disabled>丢弃</button>
         </div>

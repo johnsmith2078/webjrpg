@@ -1,5 +1,6 @@
 import { createInitialState } from "../modules/state.js";
 import { createGame } from "../modules/game.js";
+import { derivePlayerStats } from "../modules/stats.js";
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);
@@ -176,7 +177,7 @@ function runMagePath() {
   game.handleChoice("craft:craft_runic_staff");
   assert(game.getState().flags.has_runic_staff, "制作符文法杖后应有 has_runic_staff");
   assert(countItem(game.getState(), "runic_staff") >= 1, "应获得符文法杖");
-  assert(game.getState().player.maxMp >= 15, "制作符文法杖应提升法力上限");
+  assert(derivePlayerStats(game.getState()).maxMp >= 15, "制作符文法杖应提升法力上限");
 }
 
 function runEngineerPath() {
@@ -291,7 +292,7 @@ function runWarriorPath() {
 
   doUntil(
     game,
-    () => countItem(game.getState(), "iron_ore") >= 4,
+    () => countItem(game.getState(), "iron_ore") >= 6,
     () => {
       game.handleChoice("explore");
       resolvePrompt(game);
@@ -307,7 +308,7 @@ function runWarriorPath() {
 
   doUntil(
     game,
-    () => countItem(game.getState(), "cedar_wood") >= 3,
+    () => countItem(game.getState(), "cedar_wood") >= 5,
     () => {
       game.handleChoice("explore");
       resolvePrompt(game);
@@ -317,6 +318,10 @@ function runWarriorPath() {
     "补杉木"
   );
 
+  game.handleChoice("craft");
+  game.handleChoice("craft:forge_iron_blade");
+  assert(game.getState().flags.has_iron_blade, "锻铁刃后应有 has_iron_blade");
+  assert(countItem(game.getState(), "iron_blade") >= 1, "应获得铁刃");
   game.handleChoice("craft");
   game.handleChoice("craft:forge_heavy_blade");
   assert(game.getState().flags.has_heavy_blade, "锻造重剑后应有 has_heavy_blade");
