@@ -25,13 +25,16 @@ export function startCombat(state, enemyId) {
     skillCooldowns: {},
     enemyAtkDown: 0,
     swarmDamage: 0,
+    turretDamage: 0,
     statusEffects: {
       focus: 0,
       ward: 0,
       stealth: 0,
       crit_boost: 0,
       weaken: 0,
-      swarm: 0
+      swarm: 0,
+      turret: 0,
+      mana_shield: 0
     }
   };
   
@@ -61,6 +64,16 @@ export function resolveCombatAction(state, rng, action) {
   const c = state.combat;
   if (!c) return;
 
+  if (!c.statusEffects || typeof c.statusEffects !== "object") {
+    c.statusEffects = {};
+  }
+  if (c.statusEffects.turret === undefined) c.statusEffects.turret = 0;
+  if (c.statusEffects.mana_shield === undefined) c.statusEffects.mana_shield = 0;
+  if (c.turretDamage === undefined) c.turretDamage = 0;
+  if (c.statusEffects.mana_shield > 0 && Number(state.player?.mp || 0) <= 0) {
+    c.statusEffects.mana_shield = 0;
+  }
+
   const e = DATA.enemies[c.enemyId];
   const enemyName = e.name || c.enemyId;
   const log = [];
@@ -76,7 +89,7 @@ export function resolveCombatAction(state, rng, action) {
   c.defending = false;
 
   for (const [effect, duration] of Object.entries(c.statusEffects)) {
-    if (effect === "swarm") continue;
+    if (effect === "swarm" || effect === "turret" || effect === "mana_shield") continue;
     if (duration > 0) {
       c.statusEffects[effect] = duration - 1;
     }
@@ -166,6 +179,13 @@ export function resolveCombatAction(state, rng, action) {
     log.push({ id: nowId(), type: "system", text: "请选择：攻击 / 防御 / 使用道具 / 逃跑" });
   }
 
+  if (c.statusEffects.turret > 0 && c.enemyHp > 0) {
+    const tick = Math.max(1, Number(c.turretDamage || 1));
+    c.enemyHp = clamp(c.enemyHp - tick, 0, 9999);
+    c.statusEffects.turret = Math.max(0, c.statusEffects.turret - 1);
+    log.push({ id: nowId(), type: "rare", text: `炮塔连射，造成 ${tick} 点伤害。` });
+  }
+
   if (c.statusEffects.swarm > 0 && c.enemyHp > 0) {
     const tick = Math.max(1, Number(c.swarmDamage || 1));
     c.enemyHp = clamp(c.enemyHp - tick, 0, 9999);
@@ -209,9 +229,31 @@ export function resolveCombatAction(state, rng, action) {
   const atkDebuff = c.statusEffects.weaken > 0 ? Number(c.enemyAtkDown || 0) : 0;
   const enemyAtk = Math.max(1, Number(e.atk || 0) - atkDebuff);
   const enemyDmg = Math.max(1, damage(enemyAtk, effDef + bonusDef, rng, cursedPenalty) - wardReduction);
-  state.player.hp = clamp(state.player.hp - enemyDmg, 0, Number(derived.maxHp || state.player.maxHp || 20));
-  
-  if (c.statusEffects.ward > 0) {
+  let hpDamage = enemyDmg;
+  let mpAbsorb = 0;
+  let absorbTarget = 0;
+  const shieldRatio = Math.min(1, Math.max(0, Number(DATA.skills.arcane_drain?.shield_ratio || 0.8)));
+  const hasShield = c.statusEffects.mana_shield > 0 && Number(state.player.mp || 0) > 0 && shieldRatio > 0;
+
+  if (hasShield) {
+    absorbTarget = Math.ceil(enemyDmg * shieldRatio);
+    mpAbsorb = Math.min(Number(state.player.mp || 0), absorbTarget);
+    hpDamage = enemyDmg - mpAbsorb;
+    state.player.mp = Math.max(0, Number(state.player.mp || 0) - mpAbsorb);
+    if (mpAbsorb < absorbTarget) {
+      c.statusEffects.mana_shield = 0;
+    }
+  }
+
+  state.player.hp = clamp(state.player.hp - hpDamage, 0, Number(derived.maxHp || state.player.maxHp || 20));
+
+  if (hasShield) {
+    const prefix = c.statusEffects.ward > 0 ? "护身符削减后，" : "";
+    log.push({ id: nowId(), type: "system", text: `${prefix}魔法盾吸收 ${mpAbsorb} 点伤害，你受到 ${hpDamage} 点伤害。` });
+    if (mpAbsorb < absorbTarget) {
+      log.push({ id: nowId(), type: "rare", text: "法力耗尽，魔法盾破碎。" });
+    }
+  } else if (c.statusEffects.ward > 0) {
     log.push({ id: nowId(), type: "system", text: `护身符抵挡了部分伤害，你受到 ${enemyDmg} 点伤害。` });
   } else {
     log.push({ id: nowId(), type: "system", text: `「${enemyName}」对你造成 ${enemyDmg} 点伤害。` });
@@ -335,36 +377,33 @@ function handleSkill(state, skillId, rng, log) {
     log.push({ id: nowId(), type: "rare", text: "你怒吼震慑，敌人的气势被压制了。" });
   } else if (skillId === "fireball") {
     const e = DATA.enemies[c.enemyId];
-    const base = Number(skill.base_damage || 8);
-    const dmg = Math.max(1, Math.floor((base + rng.nextInt(0, 2) - Math.floor(Number(e.def || 0) / 2)) * getCritMultiplier(c)));
-    c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
-    log.push({ id: nowId(), type: "rare", text: `火球术！你造成了 ${dmg} 点魔法伤害。` });
-  } else if (skillId === "arcane_drain") {
-    const e = DATA.enemies[c.enemyId];
     const base = Number(skill.base_damage || 6);
-    const dmg = Math.max(1, Math.floor((base + rng.nextInt(0, 2) - Math.floor(Number(e.def || 0) / 2)) * getCritMultiplier(c)));
+    const defScale = Number(skill.def_scale || 2);
+    const bonus = Math.max(0, Number(e.def || 0)) * defScale;
+    const dmg = Math.max(1, Math.floor((base + bonus + rng.nextInt(0, 2)) * getCritMultiplier(c)));
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
-    const derived = derivePlayerStats(state);
-    const maxMp = Number(derived.maxMp || state.player.maxMp || 0);
-    const restore = Math.min(Number(skill.mp_restore || 1) + Math.floor(dmg / 2), Math.max(0, maxMp - Number(state.player.mp || 0)));
-    if (restore > 0) {
-      state.player.mp = Number(state.player.mp || 0) + restore;
-      log.push({ id: nowId(), type: "rare", text: `奥术汲取！你造成了 ${dmg} 点伤害，并回复 ${restore} 点法力。` });
-    } else {
-      log.push({ id: nowId(), type: "rare", text: `奥术汲取！你造成了 ${dmg} 点伤害。` });
-    }
+    log.push({ id: nowId(), type: "rare", text: `火球术！护甲越厚，爆炎越猛。造成 ${dmg} 点魔法伤害。` });
+  } else if (skillId === "arcane_drain") {
+    c.statusEffects.mana_shield = Math.max(Number(c.statusEffects.mana_shield || 0), 1);
+    log.push({ id: nowId(), type: "rare", text: "魔法盾展开，法力替你承伤。" });
   } else if (skillId === "deploy_turret") {
-    const e = DATA.enemies[c.enemyId];
-    const base = Number(skill.base_damage || 5);
-    const dmg = Math.max(1, Math.floor((base + rng.nextInt(0, 2) - Number(e.def || 0)) * getCritMultiplier(c)));
-    c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
-    log.push({ id: nowId(), type: "rare", text: `炮塔齐射！你造成了 ${dmg} 点伤害。` });
-  } else if (skillId === "shock_swarm") {
+    const derived = derivePlayerStats(state);
+    const base = Number(skill.tick_base || 1);
+    const scale = Number(skill.atk_scale || 0);
+    const tick = Math.max(1, Math.floor(base + Number(derived.atk || 0) * scale));
     const duration = Number(skill.duration || 2);
-    const tick = Number(skill.tick_damage || 1);
+    c.statusEffects.turret = Math.max(Number(c.statusEffects.turret || 0), duration);
+    c.turretDamage = Math.max(Number(c.turretDamage || 0), tick);
+    log.push({ id: nowId(), type: "rare", text: `炮塔启动，持续射击（每回合 ${tick} 点伤害）。` });
+  } else if (skillId === "shock_swarm") {
+    const derived = derivePlayerStats(state);
+    const base = Number(skill.tick_base || 1);
+    const scale = Number(skill.atk_scale || 0);
+    const tick = Math.max(1, Math.floor(base + Number(derived.atk || 0) * scale));
+    const duration = Number(skill.duration || 2);
     c.statusEffects.swarm = Math.max(c.statusEffects.swarm, duration);
     c.swarmDamage = Math.max(Number(c.swarmDamage || 0), tick);
-    log.push({ id: nowId(), type: "rare", text: "你释放电弧蜂群，缠绕着敌人。" });
+    log.push({ id: nowId(), type: "rare", text: `你释放电弧蜂群，缠绕着敌人（每回合 ${tick} 点伤害）。` });
   }
 
   if (skill.cooldown > 0) {

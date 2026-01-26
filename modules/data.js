@@ -1349,17 +1349,20 @@ export const DATA = {
     },
     fireball: {
       name: "火球术",
-      description: "投出火球，对敌人造成魔法伤害",
+      description: "投出火球，对敌人造成魔法伤害（防御越高越痛）",
       effects: ["magic_damage"],
-      base_damage: 9,
+      base_damage: 6,
+      def_scale: 2,
       cooldown: 2,
       mpCost: 4
     },
     deploy_turret: {
       name: "部署炮塔",
-      description: "部署简易炮塔，立即造成伤害",
-      effects: ["tech_damage"],
-      base_damage: 6,
+      description: "部署炮塔，持续造成小伤害",
+      effects: ["tech_dot"],
+      tick_base: 2,
+      atk_scale: 0.4,
+      duration: 3,
       cooldown: 3,
       enCost: 4
     },
@@ -1373,20 +1376,20 @@ export const DATA = {
       cost: 1
     },
     arcane_drain: {
-      name: "奥术汲取",
-      description: "汲取敌人灵能，造成伤害并回复法力",
-      effects: ["magic_drain"],
-      base_damage: 7,
-      mp_restore: 2,
+      name: "魔法盾",
+      description: "展开魔法盾，以法力抵挡大部分伤害",
+      effects: ["mana_shield"],
+      shield_ratio: 0.8,
       cooldown: 2,
       mpCost: 3
     },
     shock_swarm: {
       name: "电弧蜂群",
-      description: "释放持续电弧，回合末追加伤害",
+      description: "释放持续电弧，回合末造成小伤害",
       effects: ["shock_swarm"],
-      tick_damage: 2,
-      duration: 3,
+      tick_base: 1,
+      atk_scale: 0.35,
+      duration: 4,
       cooldown: 3,
       enCost: 3
     }
