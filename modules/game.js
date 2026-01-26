@@ -957,7 +957,16 @@ export function createGame({ state }) {
     }
 
     if (id === "skill:purify") {
-      if (isInCombat(s)) return combatAction(id);
+      if (isInCombat(s)) {
+        const status = getPurifyStatus();
+        if (!status.ok) {
+          s.log.push({ id: nowId(), type: "system", text: status.reason || "你现在做不到。" });
+          persist();
+          api.notify();
+          return;
+        }
+        return combatAction(id);
+      }
       return;
     }
 
