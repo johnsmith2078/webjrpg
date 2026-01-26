@@ -392,7 +392,7 @@ export const DATA = {
             ops: [
               { op: "setFlag", flag: "class_mage" },
               { op: "setFlag", flag: "skills_learned_fireball" },
-              { op: "setFlag", flag: "skills_learned_arcane_drain" },
+              { op: "setFlag", flag: "skills_learned_mana_shield" },
               { op: "gainItem", item: "mana_crystal", qty: 1 },
               { op: "advanceTime", min: 5 }
             ]
@@ -1375,7 +1375,7 @@ export const DATA = {
       cooldown: 3,
       cost: 1
     },
-    arcane_drain: {
+    mana_shield: {
       name: "魔法盾",
       description: "展开魔法盾，以法力抵挡大部分伤害",
       effects: ["mana_shield"],

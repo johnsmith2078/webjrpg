@@ -621,8 +621,8 @@ export function createGame({ state }) {
       if (s.flags.skills_learned_fireball) {
         pushSkill("fireball", "火球术");
       }
-      if (s.flags.skills_learned_arcane_drain) {
-        pushSkill("arcane_drain", "魔法盾");
+      if (s.flags.skills_learned_mana_shield) {
+        pushSkill("mana_shield", "魔法盾");
       }
       if (s.flags.skills_learned_deploy_turret) {
         pushSkill("deploy_turret", "部署炮塔");

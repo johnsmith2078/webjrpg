@@ -232,7 +232,7 @@ export function resolveCombatAction(state, rng, action) {
   let hpDamage = enemyDmg;
   let mpAbsorb = 0;
   let absorbTarget = 0;
-  const shieldRatio = Math.min(1, Math.max(0, Number(DATA.skills.arcane_drain?.shield_ratio || 0.8)));
+  const shieldRatio = Math.min(1, Math.max(0, Number(DATA.skills.mana_shield?.shield_ratio || 0.8)));
   const hasShield = c.statusEffects.mana_shield > 0 && Number(state.player.mp || 0) > 0 && shieldRatio > 0;
 
   if (hasShield) {
@@ -386,7 +386,7 @@ function handleSkill(state, skillId, rng, log) {
     const dmg = Math.max(1, damage(baseAtk, e.def, rng, 0, getCritMultiplier(c)));
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     log.push({ id: nowId(), type: "rare", text: `火球术！法力越盛，爆炎越猛（受护甲压制）。造成 ${dmg} 点魔法伤害。` });
-  } else if (skillId === "arcane_drain") {
+  } else if (skillId === "mana_shield") {
     c.statusEffects.mana_shield = Math.max(Number(c.statusEffects.mana_shield || 0), 1);
     log.push({ id: nowId(), type: "rare", text: "魔法盾展开，法力替你承伤。" });
   } else if (skillId === "deploy_turret") {

@@ -113,7 +113,7 @@
 - `skills_learned_power_strike`：已学会强力击
 - `skills_learned_war_cry`：已学会战吼
 - `skills_learned_fireball`：已学会火球术
-- `skills_learned_arcane_drain`：已学会魔法盾
+- `skills_learned_mana_shield`：已学会魔法盾
 - `skills_learned_deploy_turret`：已学会部署炮塔
 - `skills_learned_shock_swarm`：已学会电弧蜂群
 - `skills_learned_heal_light`：已学会微光治愈
@@ -148,7 +148,7 @@
 - `fireball`：火球术（法师：法力上限转伤害，仍受防御减伤）
 - `deploy_turret`：部署炮塔（工程师：持续伤害，随装备提升）
 - `war_cry`：战吼（战士：压制敌人攻击）
-- `arcane_drain`：魔法盾（法师：法力抵伤）
+- `mana_shield`：魔法盾（法师：法力抵伤）
 - `shock_swarm`：电弧蜂群（工程师：回合末持续伤害，随装备提升）
 
 ---
@@ -172,7 +172,7 @@
 - 事件：`village_origins` (需 `has_firepit`)
 - 选择：
 - "我曾为王国而战" -> 战士（设置 `class_warrior`；学会 `power_strike` / `war_cry`；获得 `iron_ore x1`）
-- "我研习奥术之道" -> 法师（设置 `class_mage`；学会 `fireball` / `arcane_drain`（魔法盾）；获得 `mana_crystal x1`）
+- "我研习奥术之道" -> 法师（设置 `class_mage`；学会 `fireball` / `mana_shield`（魔法盾）；获得 `mana_crystal x1`）
 - "我创造机械奇迹" -> 工程师（设置 `class_engineer`；学会 `deploy_turret` / `shock_swarm`；获得 `scrap_metal x1`）
 
 说明（当前实现）：职业旗标用于解锁对应配方/资源转化；地点解锁以 `timeMin`/旗标为准。
@@ -439,7 +439,7 @@ NPC通过两种方式出现：
 - **效果**：造成魔法伤害，基础低、随最大法力上限提升，并按防御减伤（伤害 = damage(2 + floor(maxMp×0.4), 敌方def)，含 0~2 随机）
 - **消耗**：消耗4点MP
 
-#### `arcane_drain`（魔法盾）
+#### `mana_shield`（魔法盾）
 - **获取**：职业起源回忆（法师）
 - **效果**：展开魔法盾，持续整场战斗；受到伤害时，将 80% 伤害转为法力消耗；法力为 0 时失效
 - **消耗**：消耗3点MP
@@ -794,7 +794,7 @@ DATA.equipmentBonuses = {
 | `runic_staff` | 法师武器（提高 maxMp，让法术链成立） | 法力上限变大后，法师终于“像法师” | 占用武器槽 | 强化法师技能续航 | `craft_runic_staff` |
 | `scrap_pistol` | 工程师武器（稳定输出；偏向对付硬目标） | 你用科技打穿高防怪，不用硬磨 | 占用武器槽 | 与 `deploy_turret` / `shock_swarm` 协同（DoT随装备成长） | `assemble_scrap_pistol` |
 | `plate_armor` | 坦度核心（让你敢吃一记重击不死） | 面对重击怪，你能站着打完 | 占用防具槽 | 与 `counter` / `warding_talisman` 协同 | `forge_plate_armor` |
-| `warding_robe` | 法师防具（防御+法力；把“脆皮法师”变成“能站住的法师”） | 你第一次能边挨打边抽蓝 | 占用防具槽；消耗稀有材料 | 与 `arcane_drain`（魔法盾）/ `purify` 协同 | `stitch_warding_robe` |
+| `warding_robe` | 法师防具（防御+法力；把“脆皮法师”变成“能站住的法师”） | 你第一次能边挨打边抽蓝 | 占用防具槽；消耗稀有材料 | 与 `mana_shield`（魔法盾）/ `purify` 协同 | `stitch_warding_robe` |
 | `repeating_crossbow` | 精准武器（降低敌人闪避带来的波动） | 打闪避怪时不再“空刀” | 占用武器槽；可能牺牲爆发 | 反制 `evasion`（软克制：降低闪避率） | 目标：通过 `thieves_tools` 解锁的宝箱/事件获得，或新增工程师制作线 |
 
 ### 11.4 技能爽点矩阵（12/12）
@@ -811,7 +811,7 @@ DATA.equipmentBonuses = {
 | `fireball` | 法力驱动（最大法力转伤害） | 法力堆起来后，火球变得更可靠 | MP 消耗 + 冷却 | 法师装备/奥术共鸣；仍可应对 `high_def`（受防御减伤） | 法师起源 |
 | `deploy_turret` | 持续压制（小伤害连击） | 炮塔开火后每回合都在输出，武器越强跳得越高 | EN 消耗 + 冷却 | 与 `shock_swarm` 协同；随装备成长 | 工程师起源 |
 | `war_cry` | 压制（让敌人伤害变得可控） | Boss 面前一声战吼，接下来的回合都更稳 | SP 消耗 + 冷却 | 反制 `heavy_attack`（减轻重击伤害） | 战士起源 |
-| `arcane_drain` | 法力护体（80% 伤害转法力） | 看到重击时开盾硬吃，法力顶住整场战斗 | MP 消耗 + 冷却；法力为 0 则失效 | 与法师装备/回复资源协同 | 法师起源 |
+| `mana_shield` | 法力护体（80% 伤害转法力） | 看到重击时开盾硬吃，法力顶住整场战斗 | MP 消耗 + 冷却；法力为 0 则失效 | 与法师装备/回复资源协同 | 法师起源 |
 | `shock_swarm` | 持续压榨（长战/高防的效率解） | 一次释放，后面每回合都在收利息，随装备成长 | EN 消耗 + 冷却 | 反制 `high_def`（通过持续伤害感） | 工程师起源 |
 
 ### 11.5 落地验收（后续实现必须满足）
