@@ -113,7 +113,7 @@
 - `skills_learned_power_strike`：已学会强力击
 - `skills_learned_war_cry`：已学会战吼
 - `skills_learned_fireball`：已学会火球术
-- `skills_learned_arcane_drain`：已学会奥术汲取
+- `skills_learned_arcane_drain`：已学会魔法盾
 - `skills_learned_deploy_turret`：已学会部署炮塔
 - `skills_learned_shock_swarm`：已学会电弧蜂群
 - `skills_learned_heal_light`：已学会微光治愈
@@ -145,11 +145,11 @@
 - `heal_light`：微光治愈（少量恢复HP）
 - `stealth`：隐身（下回合回避率大幅提升）
 - `power_strike`：强力击（战士：高伤害）
-- `fireball`：火球术（法师：魔法伤害）
-- `deploy_turret`：部署炮塔（工程师：持续伤害）
+- `fireball`：火球术（法师：敌方防御越高伤害越高）
+- `deploy_turret`：部署炮塔（工程师：持续伤害，随装备提升）
 - `war_cry`：战吼（战士：压制敌人攻击）
-- `arcane_drain`：奥术汲取（法师：伤害并回复法力）
-- `shock_swarm`：电弧蜂群（工程师：回合末持续伤害）
+- `arcane_drain`：魔法盾（法师：法力抵伤）
+- `shock_swarm`：电弧蜂群（工程师：回合末持续伤害，随装备提升）
 
 ---
 
@@ -172,7 +172,7 @@
 - 事件：`village_origins` (需 `has_firepit`)
 - 选择：
 - "我曾为王国而战" -> 战士（设置 `class_warrior`；学会 `power_strike` / `war_cry`；获得 `iron_ore x1`）
-- "我研习奥术之道" -> 法师（设置 `class_mage`；学会 `fireball` / `arcane_drain`；获得 `mana_crystal x1`）
+- "我研习奥术之道" -> 法师（设置 `class_mage`；学会 `fireball` / `arcane_drain`（魔法盾）；获得 `mana_crystal x1`）
 - "我创造机械奇迹" -> 工程师（设置 `class_engineer`；学会 `deploy_turret` / `shock_swarm`；获得 `scrap_metal x1`）
 
 说明（当前实现）：职业旗标用于解锁对应配方/资源转化；地点解锁以 `timeMin`/旗标为准。
@@ -436,22 +436,22 @@ NPC通过两种方式出现：
 
 #### `fireball`（火球术）
 - **获取**：职业起源回忆（法师）
-- **效果**：造成魔法伤害
+- **效果**：造成魔法伤害，敌人防御越高伤害越高（伤害 = 6 + 2×敌方def + 0~2）
 - **消耗**：消耗4点MP
 
-#### `arcane_drain`（奥术汲取）
+#### `arcane_drain`（魔法盾）
 - **获取**：职业起源回忆（法师）
-- **效果**：造成魔法伤害，并回复少量法力
+- **效果**：展开魔法盾，持续整场战斗；受到伤害时，将 80% 伤害转为法力消耗；法力为 0 时失效
 - **消耗**：消耗3点MP
 
 #### `deploy_turret`（部署炮塔）
 - **获取**：职业起源回忆（工程师）
-- **效果**：部署炮塔，立即造成伤害
+- **效果**：部署炮塔，持续 3 回合在回合末造成小伤害；每跳伤害 = 2 + floor(有效atk×0.4)，随装备提升；重复施放刷新持续时间并取更高每跳伤害
 - **消耗**：消耗4点EN
 
 #### `shock_swarm`（电弧蜂群）
 - **获取**：职业起源回忆（工程师）
-- **效果**：回合末持续造成电弧伤害
+- **效果**：释放电弧蜂群，持续 4 回合在回合末造成小伤害；每跳伤害 = 1 + floor(有效atk×0.35)，随装备提升；重复施放刷新持续时间并取更高每跳伤害
 - **消耗**：消耗3点EN
 
 ---
@@ -757,8 +757,8 @@ DATA.equipmentBonuses = {
 
 | trait_id | 代表敌人 | 玩家看到的提示（示例） | 主要惩罚 | 主要对策（至少 2 条，且不应互相重复） |
 |---|---|---|---|---|
-| `evasion` | `shadow_beast` / `wolf` / `clockwork_spider` | “它的身形在雾里忽隐忽现。” | 普攻更容易落空（输出不稳定） | `repeating_crossbow`（降低闪避概率）、`deploy_turret`（锁定后降低闪避） |
-| `high_def` | `crystal_golem` / `crystal_overseer` / `possessed_tree` | “护甲像岩层一样闭合。” | 物理伤害被明显压低（战斗拖长） | `fireball`/`arcane_drain`（魔法破防）、`shock_swarm`（持续伤害绕过防御感）、`explosive_trap`（爆发破甲） |
+| `evasion` | `shadow_beast` / `wolf` / `clockwork_spider` | “它的身形在雾里忽隐忽现。” | 普攻更容易落空（输出不稳定） | `repeating_crossbow`（降低闪避概率）、`deploy_turret`（持续压制，减少空刀损失） |
+| `high_def` | `crystal_golem` / `crystal_overseer` / `possessed_tree` | “护甲像岩层一样闭合。” | 物理伤害被明显压低（战斗拖长） | `fireball`（防御越高越痛）、`deploy_turret`/`shock_swarm`（持续伤害）、`explosive_trap`（爆发破甲） |
 | `heavy_attack` | `cursed_miner` / `clockwork_titan` / `mine_warlord` | “它开始蓄力。”（下一回合重击） | 下一回合高伤害（容易被一波带走） | `defend`（显著减伤）、`warding_talisman`（硬吃保险）、`stealth`（躲过重击并反打）、`bound_charm`（打断蓄力）、`counter`（格挡成功后反击） |
 | `curses` | `cursed_miner` / `mine_warlord` | “黑灰缠上你的手腕。” | 进入 `cursed` 状态（后续受伤更重） | `purify`（清除诅咒并反杀）、`village_homecoming_cursed`（花钱驱散）、`warding_talisman`（减少被打穿的风险） |
 | `summon` | `possessed_tree` | “根须在地面下翻涌。”（召唤/堆叠） | 召唤物/缠绕堆叠让战斗失控（持续掉血或减益） | `sweep`（清理召唤物并制造输出窗口）、`explosive_trap`（爆发清场）、`bound_charm`（阻止其连续召唤） |
@@ -792,9 +792,9 @@ DATA.equipmentBonuses = {
 | `scrap_metal` | 工程师资源（支撑 EN 与科技装备组合） | 你靠科技资源打造陷阱/炮塔，走出另一条路 | 采集耗时 | `scrap_pistol` / `repair_auto_turret` | `ancient_lab` 探索；掉落 |
 | `heavy_blade` | 战士武器（高 atk；解锁横扫；强力击收益最大） | 一刀劈下去，数字就是爽 | 占用武器槽 | 解锁 `sweep`（目标）；强化 `power_strike` 价值 | `forge_heavy_blade` |
 | `runic_staff` | 法师武器（提高 maxMp，让法术链成立） | 法力上限变大后，法师终于“像法师” | 占用武器槽 | 强化法师技能续航 | `craft_runic_staff` |
-| `scrap_pistol` | 工程师武器（稳定输出；偏向对付硬目标） | 你用科技打穿高防怪，不用硬磨 | 占用武器槽 | 与 `deploy_turret` / `shock_swarm` 协同 | `assemble_scrap_pistol` |
+| `scrap_pistol` | 工程师武器（稳定输出；偏向对付硬目标） | 你用科技打穿高防怪，不用硬磨 | 占用武器槽 | 与 `deploy_turret` / `shock_swarm` 协同（DoT随装备成长） | `assemble_scrap_pistol` |
 | `plate_armor` | 坦度核心（让你敢吃一记重击不死） | 面对重击怪，你能站着打完 | 占用防具槽 | 与 `counter` / `warding_talisman` 协同 | `forge_plate_armor` |
-| `warding_robe` | 法师防具（防御+法力；把“脆皮法师”变成“能站住的法师”） | 你第一次能边挨打边抽蓝 | 占用防具槽；消耗稀有材料 | 与 `arcane_drain` / `purify` 协同 | `stitch_warding_robe` |
+| `warding_robe` | 法师防具（防御+法力；把“脆皮法师”变成“能站住的法师”） | 你第一次能边挨打边抽蓝 | 占用防具槽；消耗稀有材料 | 与 `arcane_drain`（魔法盾）/ `purify` 协同 | `stitch_warding_robe` |
 | `repeating_crossbow` | 精准武器（降低敌人闪避带来的波动） | 打闪避怪时不再“空刀” | 占用武器槽；可能牺牲爆发 | 反制 `evasion`（软克制：降低闪避率） | 目标：通过 `thieves_tools` 解锁的宝箱/事件获得，或新增工程师制作线 |
 
 ### 11.4 技能爽点矩阵（12/12）
@@ -808,11 +808,11 @@ DATA.equipmentBonuses = {
 | `heal_light` | 战斗内续航（把 SP 变成生命线） | 你在濒死边缘抬一口血，继续压制 | SP 消耗 + 冷却；可被打断/压制 | 与 `mystic_herb`/药剂协同 | 草药师事件/服务教授 |
 | `stealth` | 躲招与翻盘（把一回合变成“免伤窗口”） | 躲掉蓄力重击后反打一套 | SP 消耗 + 冷却 | 反制 `heavy_attack`；与 `counter`/`bound_charm` 协同 | 目标：流浪者教授（可要求 `thieves_tools`） |
 | `power_strike` | 物理爆发（把优势转成击杀） | 破绽出现时一击打穿血线 | SP 消耗 + 冷却 | 与 `focus`/茶/重剑协同 | 战士起源 |
-| `fireball` | 魔法破防（高防怪的标准解） | 打岩层护甲怪时仍能稳定掉血 | MP 消耗 + 冷却 | 反制 `high_def` | 法师起源 |
-| `deploy_turret` | 科技爆发（工程师的“先手压制”） | 开局布炮塔，立刻抢到节奏 | EN 消耗 + 冷却 | 与 `shock_swarm` 协同；可作为反制闪避的辅助 | 工程师起源 |
+| `fireball` | 破甲反馈（敌人越硬越痛） | 面对高防怪时火球反而更猛 | MP 消耗 + 冷却 | 反制 `high_def` | 法师起源 |
+| `deploy_turret` | 持续压制（小伤害连击） | 炮塔开火后每回合都在输出，武器越强跳得越高 | EN 消耗 + 冷却 | 与 `shock_swarm` 协同；随装备成长 | 工程师起源 |
 | `war_cry` | 压制（让敌人伤害变得可控） | Boss 面前一声战吼，接下来的回合都更稳 | SP 消耗 + 冷却 | 反制 `heavy_attack`（减轻重击伤害） | 战士起源 |
-| `arcane_drain` | 自我循环（输出并补蓝） | 你把敌人的血换成自己的法力 | MP 消耗 + 冷却 | 对长战有效；配合法师装备 | 法师起源 |
-| `shock_swarm` | 持续压榨（长战/高防的效率解） | 一次释放，后面每回合都在收利息 | EN 消耗 + 冷却 | 反制 `high_def`（通过持续伤害感） | 工程师起源 |
+| `arcane_drain` | 法力护体（80% 伤害转法力） | 看到重击时开盾硬吃，法力顶住整场战斗 | MP 消耗 + 冷却；法力为 0 则失效 | 与法师装备/回复资源协同 | 法师起源 |
+| `shock_swarm` | 持续压榨（长战/高防的效率解） | 一次释放，后面每回合都在收利息，随装备成长 | EN 消耗 + 冷却 | 反制 `high_def`（通过持续伤害感） | 工程师起源 |
 
 ### 11.5 落地验收（后续实现必须满足）
 
