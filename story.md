@@ -74,7 +74,7 @@
 - `monster_fang`：兽牙（武器升级材料）
 - `spirit_stone`：灵石（稀有材料；当前无技能强化效果）
 - `health_potion`：生命药水（恢复更多HP）
-- `focus_tea`：凝神茶（临时提升暴击率）
+- `focus_tea`：凝神茶（短暂必定暴击并造成双倍伤害）
 - `explosive_trap`：爆炸陷阱（战斗道具：群体伤害）
 - `warding_talisman`：护身符（战斗道具：减少伤害）
 - `thieves_tools`：盗贼工具（稀有工具；当前无专属交互）
@@ -109,7 +109,7 @@
 - `met_elder`：已遇见村长（解锁高级信息）
 - `met_wanderer`：已遇见流浪者
 - `skills_learned_purify`：已学会破邪斩
-- `skills_learned_focus`：已学会凝神（提升暴击率）
+- `skills_learned_focus`：已学会凝神（必定暴击并造成双倍伤害）
 - `skills_learned_power_strike`：已学会强力击
 - `skills_learned_war_cry`：已学会战吼
 - `skills_learned_fireball`：已学会火球术
@@ -139,7 +139,7 @@
 ### 1.7 技能（skill_id）
 
 - `purify`：破邪斩（对灵体/守护者伤害更高，可清除诅咒）
-- `focus`：凝神（提升下次攻击暴击率）
+- `focus`：凝神（必定暴击并造成双倍伤害）
 - `sweep`：横扫（对多个敌人造成伤害）
 - `counter`：反击（受到攻击时自动反击）
 - `heal_light`：微光治愈（少量恢复HP）
@@ -396,10 +396,10 @@ NPC通过两种方式出现：
 
 #### `focus`（凝神）
 - **获取**：`blacksmith_encounter` 选择“学习锻造技巧”，或后续通过铁匠服务 `teach_focus`
-- **效果**：提升暴击率（持续 2 回合）
+- **效果**：必定暴击并造成双倍伤害（持续 2 回合）
 - **消耗**：消耗 1 点 SP；冷却 3 回合
 
-注：`focus_tea` 是独立的战斗消耗品（使用后也会提升暴击率），与技能 `focus` 不互相依赖。
+注：`focus_tea` 是独立的战斗消耗品（使用后也会必定暴击并造成双倍伤害），与技能 `focus` 不互相依赖。
 
 #### `sweep`（横扫）
 - **获取**：当前实现无获取途径（技能已定义，但正常流程不可获得）
@@ -757,7 +757,7 @@ DATA.equipmentBonuses = {
 
 | trait_id | 代表敌人 | 玩家看到的提示（示例） | 主要惩罚 | 主要对策（至少 2 条，且不应互相重复） |
 |---|---|---|---|---|
-| `evasion` | `shadow_beast` / `wolf` / `clockwork_spider` | “它的身形在雾里忽隐忽现。” | 普攻更容易落空（输出不稳定） | `repeating_crossbow`（降低闪避概率）、`focus`（下一击锁定命中）、`deploy_turret`（锁定后降低闪避） |
+| `evasion` | `shadow_beast` / `wolf` / `clockwork_spider` | “它的身形在雾里忽隐忽现。” | 普攻更容易落空（输出不稳定） | `repeating_crossbow`（降低闪避概率）、`deploy_turret`（锁定后降低闪避） |
 | `high_def` | `crystal_golem` / `crystal_overseer` / `possessed_tree` | “护甲像岩层一样闭合。” | 物理伤害被明显压低（战斗拖长） | `fireball`/`arcane_drain`（魔法破防）、`shock_swarm`（持续伤害绕过防御感）、`explosive_trap`（爆发破甲） |
 | `heavy_attack` | `cursed_miner` / `clockwork_titan` / `mine_warlord` | “它开始蓄力。”（下一回合重击） | 下一回合高伤害（容易被一波带走） | `defend`（显著减伤）、`warding_talisman`（硬吃保险）、`stealth`（躲过重击并反打）、`bound_charm`（打断蓄力）、`counter`（格挡成功后反击） |
 | `curses` | `cursed_miner` / `mine_warlord` | “黑灰缠上你的手腕。” | 进入 `cursed` 状态（后续受伤更重） | `purify`（清除诅咒并反杀）、`village_homecoming_cursed`（花钱驱散）、`warding_talisman`（减少被打穿的风险） |
@@ -783,7 +783,7 @@ DATA.equipmentBonuses = {
 | `monster_fang` | 武器升级材料（让你去追猎“特定怪”而非无脑刷） | 为了 2 颗兽牙，你愿意再进一次雾林 | 掉落稀有；机会成本 | `forge_master_blade` / `upgrade_weapon` | `shadow_beast`/`wolf`/`mine_warlord` 掉落 |
 | `spirit_stone` | 技能强化石（持有即增强技能；打造装备会消耗它） | “灵石共鸣”：关键技能伤害/治疗明显提升 | 作为材料会被消耗；稀有 | 强化所有技能；与多技能流绑定 | `cursed_miner`/`crystal_golem`/Boss 掉落；流浪者购买；任务奖励 |
 | `health_potion` | 应急大回复（容错） | 血线见底时一口回血把战斗拉回正轨 | 战斗消耗品 | 搭配 `warding_talisman` 顶住重击 | `brew_health_potion`、任务奖励 |
-| `focus_tea` | 速效爆发药（短窗口高暴击） | 你先喝茶再强力击：一回合打出爆发 | 战斗消耗品 | 与 `power_strike` / `repeating_crossbow` 协同 | `craft_focus_tea`、任务奖励 |
+| `focus_tea` | 速效爆发药（短窗口双倍暴击） | 你先喝茶再强力击：一回合打出爆发 | 战斗消耗品 | 与 `power_strike` / `repeating_crossbow` 协同 | `craft_focus_tea`、任务奖励 |
 | `explosive_trap` | 破防/清场爆发（对召唤与高防尤其好用） | 召唤物堆起来前，一炸清空节奏 | 战斗消耗品 | 反制 `summon`、压制 `high_def` | `assemble_explosive_trap`、`repair_auto_turret`、任务奖励 |
 | `warding_talisman` | 护身保险（重击窗口的最稳解法） | 看到蓄力重击，你开符硬吃不死 | 战斗消耗品 | 反制 `heavy_attack`、保底过关 | `enchant_warding_talisman`、任务奖励 |
 | `thieves_tools` | 工具钥匙（解锁“隐藏选项/捷径/宝箱”） | prompt 里出现“撬开侧门（需要盗贼工具）”，你直接拿到稀有奖励 | 作为开锁工具可设定为消耗品；机会成本 | 解锁 `repeating_crossbow` 获取线；解锁 `stealth` 学习线 | `shadow_beast` 掉落；`wanderer_encounter` 获得；任务奖励 |
@@ -802,7 +802,7 @@ DATA.equipmentBonuses = {
 | skill_id | 核心意义（独特价值） | 爽点时刻（示例） | 代价/限制 | 主要联动/克制 | 获取（目标） |
 |---|---|---|---|---|---|
 | `purify` | 驱邪与清咒（遇到诅咒/灵体时的“翻盘按钮”） | 你带着不祥使出破邪斩：伤害翻倍并净化 | 每战 1 次；需要武器允许 | 反制 `curses`；对灵体高效 | 锻造铁刃；铁匠事件可学 |
-| `focus` | 锁定破绽（把一回合变成“必中的关键一击”） | 闪避怪面前凝神：下一击命中并高暴击 | SP 消耗 + 冷却 | 反制 `evasion`；与 `power_strike` 协同 | 铁匠服务 `teach_focus` |
+| `focus` | 锁定破绽（把一回合变成“双倍暴击”） | 凝神后接强力击：打出超额伤害 | SP 消耗 + 冷却 | 与 `power_strike` 协同 | 铁匠服务 `teach_focus` |
 | `sweep` | 清场/扫荡（专门处理召唤/堆叠类麻烦） | 召唤物堆起时一招清空节奏 | SP 消耗 + 冷却 | 反制 `summon`；与陷阱协同 | 目标：铁匠服务教授（需重剑或相关条件） |
 | `counter` | 防守反击（把挨打变成输出） | 敌人重击落下，你格挡并触发反击 | 被动；触发条件明确 | 反制 `heavy_attack`；与 `plate_armor` 协同 | 目标：击败/见识重击后由铁匠教授或事件领悟 |
 | `heal_light` | 战斗内续航（把 SP 变成生命线） | 你在濒死边缘抬一口血，继续压制 | SP 消耗 + 冷却；可被打断/压制 | 与 `mystic_herb`/药剂协同 | 草药师事件/服务教授 |

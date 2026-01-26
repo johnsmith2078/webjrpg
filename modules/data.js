@@ -76,7 +76,7 @@ export const DATA = {
     monster_fang: { name: "兽牙", tags: ["material", "rare"], desc: "野兽的尖牙，锐利无比。" },
     spirit_stone: { name: "灵石", tags: ["material", "rare"], combat: { type: "skill_boost" }, desc: "充满灵气的石头，能强化技能。" },
     health_potion: { name: "生命药水", tags: ["medicine"], heal: 12, desc: "红色的药水，迅速恢复生命。" },
-    focus_tea: { name: "凝神茶", tags: ["consumable"], combat: { type: "focus", turns: 2 }, desc: "清爽的茶，能让人集中精神。" },
+    focus_tea: { name: "凝神茶", tags: ["consumable"], combat: { type: "focus", turns: 2 }, desc: "清爽的茶，短暂让攻击必定暴击并造成双倍伤害。" },
     explosive_trap: { name: "爆炸陷阱", tags: ["consumable"], combat: { type: "explosive", damage: [8, 12] }, desc: "简易的陷阱，威力惊人。" },
     warding_talisman: { name: "护身符", tags: ["talisman"], combat: { type: "ward", turns: 2 }, desc: "护身的符咒，能减少受到的伤害。" },
     thieves_tools: { name: "盗贼工具", tags: ["tool"], desc: "一套精致的工具，也许能打开什么。" },
@@ -1301,7 +1301,7 @@ export const DATA = {
     },
     focus: {
       name: "凝神",
-      description: "提升下次攻击的暴击率",
+      description: "短暂凝神，使攻击必定暴击并造成双倍伤害",
       effects: ["crit_boost"],
       boost_amount: 50,
       duration: 2,

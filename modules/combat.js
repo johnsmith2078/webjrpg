@@ -3,9 +3,15 @@ import { recordItemGain } from "./quests.js";
 import { clamp, nowId } from "./utils.js";
 import { derivePlayerStats } from "./stats.js";
 
-function damage(atk, def, rng, bonus) {
+function damage(atk, def, rng, bonus, critMultiplier) {
   const roll = rng.nextInt(0, 2);
-  return Math.max(0, atk + roll + Number(bonus || 0) - def);
+  const base = Math.max(0, atk + roll + Number(bonus || 0) - def);
+  const mult = Number.isFinite(critMultiplier) ? critMultiplier : 1;
+  return Math.floor(base * mult);
+}
+
+function getCritMultiplier(combat) {
+  return combat && combat.statusEffects && combat.statusEffects.crit_boost > 0 ? 2 : 1;
 }
 
 export function startCombat(state, enemyId) {
@@ -87,9 +93,8 @@ export function resolveCombatAction(state, rng, action) {
     if (weaponCombat.damageBonusVs && weaponCombat.damageBonusVs[c.enemyId]) {
       weaponBonus += Number(weaponCombat.damageBonusVs[c.enemyId] || 0);
     }
-    const isCrit = c.statusEffects.crit_boost > 0 && rng.nextFloat() < 0.8;
-    const critBonus = isCrit ? Math.floor(effAtk * 0.5) : 0;
-    const dmg = damage(effAtk, e.def, rng, weaponBonus + critBonus);
+    const isCrit = c.statusEffects.crit_boost > 0;
+    const dmg = damage(effAtk, e.def, rng, weaponBonus, getCritMultiplier(c));
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     
     if (isCrit) {
@@ -275,6 +280,7 @@ function handleSkill(state, skillId, rng, log) {
         log.push({ id: nowId(), type: "rare", text: "诅咒之力加持，伤害翻倍！" });
       }
       
+      dmg = Math.floor(dmg * getCritMultiplier(c));
       c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
       log.push({ id: nowId(), type: "rare", text: `破邪斩！你造成了 ${dmg} 点伤害。` });
       if (state.flags.cursed) {
@@ -290,7 +296,7 @@ function handleSkill(state, skillId, rng, log) {
     const e = DATA.enemies[c.enemyId];
     const derived = derivePlayerStats(state);
     const baseDmg = Math.floor(Number(derived.atk || 0) * (skill.damage_percent / 100));
-    const dmg = damage(baseDmg, e.def, rng, 0);
+    const dmg = damage(baseDmg, e.def, rng, 0, getCritMultiplier(c));
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     log.push({ id: nowId(), type: "rare", text: `横扫！你造成了 ${dmg} 点范围伤害。` });
   } else if (skillId === "heal_light") {
@@ -318,7 +324,7 @@ function handleSkill(state, skillId, rng, log) {
     const e = DATA.enemies[c.enemyId];
     const derived = derivePlayerStats(state);
     const baseAtk = Math.floor(Number(derived.atk || 0) * 1.6);
-    const dmg = damage(baseAtk, e.def, rng, 0);
+    const dmg = damage(baseAtk, e.def, rng, 0, getCritMultiplier(c));
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     log.push({ id: nowId(), type: "rare", text: `强力击！你造成了 ${dmg} 点伤害。` });
   } else if (skillId === "war_cry") {
@@ -330,13 +336,13 @@ function handleSkill(state, skillId, rng, log) {
   } else if (skillId === "fireball") {
     const e = DATA.enemies[c.enemyId];
     const base = Number(skill.base_damage || 8);
-    const dmg = Math.max(1, base + rng.nextInt(0, 2) - Math.floor(Number(e.def || 0) / 2));
+    const dmg = Math.max(1, Math.floor((base + rng.nextInt(0, 2) - Math.floor(Number(e.def || 0) / 2)) * getCritMultiplier(c)));
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     log.push({ id: nowId(), type: "rare", text: `火球术！你造成了 ${dmg} 点魔法伤害。` });
   } else if (skillId === "arcane_drain") {
     const e = DATA.enemies[c.enemyId];
     const base = Number(skill.base_damage || 6);
-    const dmg = Math.max(1, base + rng.nextInt(0, 2) - Math.floor(Number(e.def || 0) / 2));
+    const dmg = Math.max(1, Math.floor((base + rng.nextInt(0, 2) - Math.floor(Number(e.def || 0) / 2)) * getCritMultiplier(c)));
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     const derived = derivePlayerStats(state);
     const maxMp = Number(derived.maxMp || state.player.maxMp || 0);
@@ -350,7 +356,7 @@ function handleSkill(state, skillId, rng, log) {
   } else if (skillId === "deploy_turret") {
     const e = DATA.enemies[c.enemyId];
     const base = Number(skill.base_damage || 5);
-    const dmg = Math.max(1, base + rng.nextInt(0, 2) - Number(e.def || 0));
+    const dmg = Math.max(1, Math.floor((base + rng.nextInt(0, 2) - Number(e.def || 0)) * getCritMultiplier(c)));
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     log.push({ id: nowId(), type: "rare", text: `炮塔齐射！你造成了 ${dmg} 点伤害。` });
   } else if (skillId === "shock_swarm") {
