@@ -22,6 +22,16 @@
 - `abandoned_mine`：废矿（铁矿石/分支事件）
 - `mountain_pass`：山口（结局）
 
+（第二章 / 第三章）
+
+- `fogback_waystation`：雾背驿站（续作入口/安全点）
+- `rust_channel`：锈水渠（雾像被引走）
+- `lockyard`：锁场（工具门槛/连弩获取）
+- `lower_works`：下水工坊（泵机/章末战）
+- `mist_well`：雾井（下行入口）
+- `paper_atrium`：纸符天井（刻印抉择）
+- `blacklight_heart`：黑光心室（第三章终盘）
+
 ### 1.2 配方（recipe_id）
 
 - `make_firepit`：石火坑
@@ -91,6 +101,10 @@
 - `warding_robe`：护法长袍（防具）
 - `repeating_crossbow`：连弩（武器；当前无获取途径）
 
+（第二章 / 第三章）
+
+- `pump_key`：泵钥（关键工具；来自泵守）
+
 ### 1.5 关键旗标（flag）
 
 - `has_firepit`：已制作石火坑
@@ -107,6 +121,16 @@
 - `cursed`：矿洞"不祥"状态（战斗受惩罚；可被"破邪斩"清除）
 - `ending_seal`：结局分支：封印
 - `ending_keep`：结局分支：保留
+
+（第二章 / 第三章）
+
+- `ch2_route_opened`：已打开雾背之路（允许进入雾背驿站）
+- `ch2_rust_opened`：已知锈水渠的路（允许进入锈水渠/锁场/下水工坊）
+- `opened_lockyard_chest`：已打开锁场暗箱（连弩只可获取一次）
+- `ch3_imprint_done`：已完成刻印（允许进入黑光心室）
+- `ending_ch3_reset`：第三章结局分支：复位
+- `ending_ch3_bind`：第三章结局分支：绑住
+- `ending_ch3_smash`：第三章结局分支：砸碎
 - `met_blacksmith`：已遇见铁匠（解锁特殊锻造）
 - `met_herbalist`：已遇见草药师（解锁特殊制作）
 - `met_elder`：已遇见村长（解锁高级信息）
@@ -310,7 +334,71 @@
 - 事件：`pass_ending`（once/priority，prompt）
 - 选择：
   - `prompt:seal`：消耗 `shrine_relic`，设置 `ending_seal`，结束
-  - `prompt:keep`：保留遗物，设置 `ending_keep`，结束
+  - `prompt:keep`：保留遗物，设置 `ending_keep`，并**继续**（续作入口）
+
+续作入口规则（必须实现）：
+
+- 选择 `prompt:keep` 后：
+  - 不触发 `endGame`
+  - 设置 `ending_keep = true`
+  - 设置 `ch2_route_opened = true`
+  - 从 `mountain_pass` 可前往 `fogback_waystation`（travel 可见）
+
+---
+
+## 2.8 第二章：雾背驿站与锈水渠（keep 续作）
+
+目标：把“保留遗物”的余波落地为可玩的新循环：新地点链路 + 工具门槛 + 明确奖励。
+
+### Act 6：雾背驿站（`fogback_waystation`）
+
+- 解锁：`ch2_route_opened = true`
+- 事件：`ch2_waystation_intro`（once/priority）
+- 结果：设置 `ch2_rust_opened = true`
+
+### Act 7：锈水渠与锁场（`rust_channel` / `lockyard`）
+
+- 解锁：`ch2_rust_opened = true`
+
+关键事件：
+
+- `lockyard_chest`（`lockyard`，once/priority，prompt）
+  - 选择：
+    - 撬开暗箱（需要 `thieves_tools x1`）：获得 `repeating_crossbow x1`，并设置 `opened_lockyard_chest = true`
+    - 离开
+
+### Act 8：下水工坊（`lower_works`）
+
+- 事件：`lower_works_guardian`（once/priority）
+- 战斗：`works_guardian`
+- 掉落：`pump_key x1`
+
+---
+
+## 2.9 第三章：雾井与黑光心室（keep 续作）
+
+目标：给出一次“看见真相，但付出代价”的终盘；以新分支结局收束第三章。
+
+### Act 9：雾井入口（`mist_well`）
+
+- 解锁：`defeated_works_guardian = true`（并获得 `pump_key`）
+- 事件：`ch3_mist_well_intro`（once/priority）
+
+### Act 10：纸符天井（`paper_atrium`）
+
+- 事件：`paper_atrium_imprint`（once/priority，prompt）
+- 选择：
+  - `imprint_stealth`：学会 `stealth`
+  - `imprint_counter`：学会 `counter`
+
+### Act 11：黑光心室（`blacklight_heart`）
+
+- 事件：`blacklight_heart_boss`（once/priority）→ 战斗 `heart_pump_guardian`
+- 事件：`ch3_ending`（once/priority，prompt）
+- 选择：
+  - `prompt:reset`：设置 `ending_ch3_reset`，结束
+  - `prompt:bind`：设置 `ending_ch3_bind`，结束
+  - `prompt:smash`：设置 `ending_ch3_smash`，结束
 
 ---
 

@@ -46,8 +46,52 @@ export const DATA = {
     mountain_pass: {
       name: "山口",
       desc: "风把岩石刮得发白。更高处，有一盏灯在等。",
-      connections: ["old_shrine"],
+      connections: ["old_shrine", "fogback_waystation"],
       unlock: { type: "flag", flag: "shrine_cleansed" }
+    },
+
+    // Chapter 2/3 (keep route)
+    fogback_waystation: {
+      name: "雾背驿站",
+      desc: "一盏孤灯立在崩塌的石阶下。木梁带着杉烟，墙里却嵌着齿轮。",
+      connections: ["mountain_pass", "rust_channel"],
+      unlock: { type: "flag", flag: "ch2_route_opened" }
+    },
+    rust_channel: {
+      name: "锈水渠",
+      desc: "雾沿着沟渠流动，像被谁引走的潮。铁味很重。",
+      connections: ["fogback_waystation", "lockyard", "lower_works"],
+      unlock: { type: "flag", flag: "ch2_rust_opened" }
+    },
+    lockyard: {
+      name: "锁场",
+      desc: "成排的铁门与铆钉。鸟居的形状被做成了锁。",
+      connections: ["rust_channel"],
+      unlock: { type: "flag", flag: "ch2_rust_opened" }
+    },
+    lower_works: {
+      name: "下水工坊",
+      desc: "蒸汽管道嘶鸣。泵机像喘息，雾在金属里回声。",
+      connections: ["rust_channel", "mist_well"],
+      unlock: { type: "flag", flag: "ch2_rust_opened" }
+    },
+    mist_well: {
+      name: "雾井",
+      desc: "井口像一张没合拢的嘴。碎纸符贴着石沿。",
+      connections: ["lower_works", "paper_atrium"],
+      unlock: { type: "flag", flag: "defeated_works_guardian" }
+    },
+    paper_atrium: {
+      name: "纸符天井",
+      desc: "井下空腔挂满旧符。风一吹，像有人在翻页。",
+      connections: ["mist_well", "blacklight_heart"],
+      unlock: { type: "flag", flag: "defeated_works_guardian" }
+    },
+    blacklight_heart: {
+      name: "黑光心室",
+      desc: "齿轮还在转。黑光不是光，更像一阵冷。",
+      connections: ["paper_atrium"],
+      unlock: { type: "flag", flag: "ch3_imprint_done" }
     }
   },
 
@@ -80,6 +124,7 @@ export const DATA = {
     explosive_trap: { name: "爆炸陷阱", tags: ["consumable"], combat: { type: "explosive", damage: [8, 12] }, desc: "简易的陷阱，威力惊人。" },
     warding_talisman: { name: "护身符", tags: ["talisman"], combat: { type: "ward", turns: 2 }, desc: "护身的符咒，能减少受到的伤害。" },
     thieves_tools: { name: "盗贼工具", tags: ["tool"], desc: "一套精致的工具，也许能打开什么。" },
+    pump_key: { name: "泵钥", tags: ["tool", "rare"], desc: "一枚冰冷的钥，槽位像鸟居的影子。" },
     master_blade: {
       name: "神刃",
       tags: ["weapon", "rare"],
@@ -383,6 +428,26 @@ export const DATA = {
       gold: 34,
       loot: { iron_ingot: 3, monster_fang: 2 },
       traits: ["curses", "heavy_attack"]
+    },
+
+    // Chapter 2/3 (keep route)
+    works_guardian: {
+      name: "泵守",
+      hp: 28,
+      atk: 4,
+      def: 3,
+      gold: 24,
+      loot: { pump_key: 1, spirit_stone: 1 },
+      traits: ["heavy_attack"]
+    },
+    heart_pump_guardian: {
+      name: "主泵守",
+      hp: 42,
+      atk: 5,
+      def: 4,
+      gold: 60,
+      loot: { spirit_stone: 1 },
+      traits: ["heavy_attack", "curses", "summon"]
     }
   },
 
@@ -714,6 +779,174 @@ export const DATA = {
             requires: { item: "shrine_relic", qty: 1 },
             ops: [
               { op: "setFlag", flag: "ending_keep" },
+              { op: "setFlag", flag: "ch2_route_opened" },
+              { op: "log", text: "你没有把遗物封回鸟居之下。" },
+              { op: "log", text: "山口的风更冷，雾却更黏。" },
+              { op: "log", text: "遗物贴着胸口，像一枚沉默的铁心。" },
+              { op: "advanceTime", min: 3 }
+            ]
+          }
+        ]
+      },
+      ops: []
+    },
+
+    // --- Chapter 2/3 (keep route) ---
+
+    ch2_waystation_intro: {
+      at: "fogback_waystation",
+      w: 0,
+      once: true,
+      priority: 10,
+      requirements: { flags: ["ch2_route_opened"] },
+      text: [
+        "翻过山口，路并没有开阔。",
+        "雾在这里有铁味，像湿冷的锈。",
+        "一盏孤灯后，是被遗忘的驿站。木梁带着杉烟，墙里却嵌着齿轮。",
+        "有人盯着你怀里的那块东西：\"雾不是天灾，是被人放出来的。\""
+      ],
+      ops: [
+        { op: "setFlag", flag: "ch2_rust_opened" },
+        { op: "advanceTime", min: 6 }
+      ]
+    },
+
+    lockyard_chest: {
+      at: "lockyard",
+      w: 0,
+      once: true,
+      priority: 10,
+      requirements: { flags: ["ch2_rust_opened"] },
+      text: ["暗箱嵌在铁门背面，缝里积着灰。"],
+      prompt: {
+        title: "暗箱",
+        choices: [
+          {
+            id: "open",
+            label: "撬开暗箱（需要盗贼工具）",
+            requires: { item: "thieves_tools", qty: 1 },
+            ops: [
+              { op: "gainItem", item: "repeating_crossbow", qty: 1 },
+              { op: "setFlag", flag: "opened_lockyard_chest" },
+              { op: "log", text: "你听见一声轻响，锁舌退回去。" },
+              { op: "advanceTime", min: 8 }
+            ]
+          },
+          {
+            id: "leave",
+            label: "离开",
+            ops: [{ op: "advanceTime", min: 2 }]
+          }
+        ]
+      },
+      ops: []
+    },
+
+    lower_works_guardian: {
+      at: "lower_works",
+      w: 0,
+      once: true,
+      priority: 10,
+      requirements: { flags: ["ch2_rust_opened"] },
+      text: ["泵机的影子抬头。外壳是铁，关节却缠着纸。"],
+      ops: [
+        { op: "startCombat", enemy: "works_guardian" },
+        { op: "advanceTime", min: 8 }
+      ]
+    },
+
+    ch3_mist_well_intro: {
+      at: "mist_well",
+      w: 0,
+      once: true,
+      priority: 10,
+      requirements: { flags: ["defeated_works_guardian"] },
+      text: ["雾不再飘，它像水一样贴着墙。井口边散着碎纸符。"],
+      ops: [{ op: "advanceTime", min: 6 }]
+    },
+
+    paper_atrium_imprint: {
+      at: "paper_atrium",
+      w: 0,
+      once: true,
+      priority: 10,
+      requirements: { flags: ["defeated_works_guardian"] },
+      text: ["符纸在风里轻响。你的手心发热，像握着一块冷铁。"],
+      prompt: {
+        title: "刻印",
+        choices: [
+          {
+            id: "imprint_stealth",
+            label: "藏进雾里（学会：隐身）",
+            requires: { item: "spirit_stone", qty: 1 },
+            ops: [
+              { op: "setFlag", flag: "skills_learned_stealth" },
+              { op: "setFlag", flag: "ch3_imprint_done" },
+              { op: "log", text: "雾贴上你的皮肤，你学会让自己变轻。" },
+              { op: "advanceTime", min: 10 }
+            ]
+          },
+          {
+            id: "imprint_counter",
+            label: "站住反打（学会：反击）",
+            requires: { item: "spirit_stone", qty: 1 },
+            ops: [
+              { op: "setFlag", flag: "skills_learned_counter" },
+              { op: "setFlag", flag: "ch3_imprint_done" },
+              { op: "log", text: "你把重心放低。雾像一面盾，回声在你骨头里响。" },
+              { op: "advanceTime", min: 10 }
+            ]
+          }
+        ]
+      },
+      ops: []
+    },
+
+    blacklight_heart_boss: {
+      at: "blacklight_heart",
+      w: 0,
+      once: true,
+      priority: 10,
+      requirements: { flags: ["ch3_imprint_done"] },
+      text: ["齿轮咬合的声音更近。黑光像冷，贴着你的牙。"],
+      ops: [
+        { op: "startCombat", enemy: "heart_pump_guardian" },
+        { op: "advanceTime", min: 10 }
+      ]
+    },
+
+    ch3_ending: {
+      at: "blacklight_heart",
+      w: 0,
+      once: true,
+      priority: 9,
+      requirements: { flags: ["defeated_heart_pump_guardian"] },
+      text: ["你听见某个锁扣声在更深处合上。"],
+      prompt: {
+        title: "黑光",
+        choices: [
+          {
+            id: "reset",
+            label: "复位（把遗物嵌回槽位）",
+            ops: [
+              { op: "setFlag", flag: "ending_ch3_reset" },
+              { op: "endGame" }
+            ]
+          },
+          {
+            id: "bind",
+            label: "绑住（用灵石刻印在身上）",
+            requires: { item: "spirit_stone", qty: 1 },
+            ops: [
+              { op: "setFlag", flag: "ending_ch3_bind" },
+              { op: "endGame" }
+            ]
+          },
+          {
+            id: "smash",
+            label: "砸碎（把遗物砸在铁板上）",
+            ops: [
+              { op: "setFlag", flag: "ending_ch3_smash" },
               { op: "endGame" }
             ]
           }
