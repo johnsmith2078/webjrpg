@@ -1349,10 +1349,10 @@ export const DATA = {
     },
     fireball: {
       name: "火球术",
-      description: "投出火球，对敌人造成魔法伤害（防御越高越痛）",
+      description: "投出火球，对敌人造成魔法伤害（法力上限越高越痛，但仍受防御减伤）",
       effects: ["magic_damage"],
-      base_damage: 6,
-      def_scale: 2,
+      base_damage: 2,
+      mp_scale: 0.4,
       cooldown: 2,
       mpCost: 4
     },

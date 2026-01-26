@@ -145,7 +145,7 @@
 - `heal_light`：微光治愈（少量恢复HP）
 - `stealth`：隐身（下回合回避率大幅提升）
 - `power_strike`：强力击（战士：高伤害）
-- `fireball`：火球术（法师：敌方防御越高伤害越高）
+- `fireball`：火球术（法师：法力上限转伤害，仍受防御减伤）
 - `deploy_turret`：部署炮塔（工程师：持续伤害，随装备提升）
 - `war_cry`：战吼（战士：压制敌人攻击）
 - `arcane_drain`：魔法盾（法师：法力抵伤）
@@ -436,7 +436,7 @@ NPC通过两种方式出现：
 
 #### `fireball`（火球术）
 - **获取**：职业起源回忆（法师）
-- **效果**：造成魔法伤害，敌人防御越高伤害越高（伤害 = 6 + 2×敌方def + 0~2）
+- **效果**：造成魔法伤害，基础低、随最大法力上限提升，并按防御减伤（伤害 = damage(2 + floor(maxMp×0.4), 敌方def)，含 0~2 随机）
 - **消耗**：消耗4点MP
 
 #### `arcane_drain`（魔法盾）
@@ -758,7 +758,7 @@ DATA.equipmentBonuses = {
 | trait_id | 代表敌人 | 玩家看到的提示（示例） | 主要惩罚 | 主要对策（至少 2 条，且不应互相重复） |
 |---|---|---|---|---|
 | `evasion` | `shadow_beast` / `wolf` / `clockwork_spider` | “它的身形在雾里忽隐忽现。” | 普攻更容易落空（输出不稳定） | `repeating_crossbow`（降低闪避概率）、`deploy_turret`（持续压制，减少空刀损失） |
-| `high_def` | `crystal_golem` / `crystal_overseer` / `possessed_tree` | “护甲像岩层一样闭合。” | 物理伤害被明显压低（战斗拖长） | `fireball`（防御越高越痛）、`deploy_turret`/`shock_swarm`（持续伤害）、`explosive_trap`（爆发破甲） |
+| `high_def` | `crystal_golem` / `crystal_overseer` / `possessed_tree` | “护甲像岩层一样闭合。” | 物理伤害被明显压低（战斗拖长） | `fireball`（法力上限加伤，仍受防御减伤）、`deploy_turret`/`shock_swarm`（持续伤害）、`explosive_trap`（爆发破甲） |
 | `heavy_attack` | `cursed_miner` / `clockwork_titan` / `mine_warlord` | “它开始蓄力。”（下一回合重击） | 下一回合高伤害（容易被一波带走） | `defend`（显著减伤）、`warding_talisman`（硬吃保险）、`stealth`（躲过重击并反打）、`bound_charm`（打断蓄力）、`counter`（格挡成功后反击） |
 | `curses` | `cursed_miner` / `mine_warlord` | “黑灰缠上你的手腕。” | 进入 `cursed` 状态（后续受伤更重） | `purify`（清除诅咒并反杀）、`village_homecoming_cursed`（花钱驱散）、`warding_talisman`（减少被打穿的风险） |
 | `summon` | `possessed_tree` | “根须在地面下翻涌。”（召唤/堆叠） | 召唤物/缠绕堆叠让战斗失控（持续掉血或减益） | `sweep`（清理召唤物并制造输出窗口）、`explosive_trap`（爆发清场）、`bound_charm`（阻止其连续召唤） |
@@ -808,7 +808,7 @@ DATA.equipmentBonuses = {
 | `heal_light` | 战斗内续航（把 SP 变成生命线） | 你在濒死边缘抬一口血，继续压制 | SP 消耗 + 冷却；可被打断/压制 | 与 `mystic_herb`/药剂协同 | 草药师事件/服务教授 |
 | `stealth` | 躲招与翻盘（把一回合变成“免伤窗口”） | 躲掉蓄力重击后反打一套 | SP 消耗 + 冷却 | 反制 `heavy_attack`；与 `counter`/`bound_charm` 协同 | 目标：流浪者教授（可要求 `thieves_tools`） |
 | `power_strike` | 物理爆发（把优势转成击杀） | 破绽出现时一击打穿血线 | SP 消耗 + 冷却 | 与 `focus`/茶/重剑协同 | 战士起源 |
-| `fireball` | 破甲反馈（敌人越硬越痛） | 面对高防怪时火球反而更猛 | MP 消耗 + 冷却 | 反制 `high_def` | 法师起源 |
+| `fireball` | 法力驱动（最大法力转伤害） | 法力堆起来后，火球变得更可靠 | MP 消耗 + 冷却 | 法师装备/奥术共鸣；仍可应对 `high_def`（受防御减伤） | 法师起源 |
 | `deploy_turret` | 持续压制（小伤害连击） | 炮塔开火后每回合都在输出，武器越强跳得越高 | EN 消耗 + 冷却 | 与 `shock_swarm` 协同；随装备成长 | 工程师起源 |
 | `war_cry` | 压制（让敌人伤害变得可控） | Boss 面前一声战吼，接下来的回合都更稳 | SP 消耗 + 冷却 | 反制 `heavy_attack`（减轻重击伤害） | 战士起源 |
 | `arcane_drain` | 法力护体（80% 伤害转法力） | 看到重击时开盾硬吃，法力顶住整场战斗 | MP 消耗 + 冷却；法力为 0 则失效 | 与法师装备/回复资源协同 | 法师起源 |

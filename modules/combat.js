@@ -377,12 +377,15 @@ function handleSkill(state, skillId, rng, log) {
     log.push({ id: nowId(), type: "rare", text: "你怒吼震慑，敌人的气势被压制了。" });
   } else if (skillId === "fireball") {
     const e = DATA.enemies[c.enemyId];
-    const base = Number(skill.base_damage || 6);
-    const defScale = Number(skill.def_scale || 2);
-    const bonus = Math.max(0, Number(e.def || 0)) * defScale;
-    const dmg = Math.max(1, Math.floor((base + bonus + rng.nextInt(0, 2)) * getCritMultiplier(c)));
+    const derived = derivePlayerStats(state);
+    const base = Number(skill.base_damage || 2);
+    const mpScale = Number(skill.mp_scale || 0);
+    const maxMp = Number(derived.maxMp || state.player.maxMp || 0);
+    const mpBonus = Math.floor(maxMp * mpScale);
+    const baseAtk = Math.max(0, base + mpBonus);
+    const dmg = Math.max(1, damage(baseAtk, e.def, rng, 0, getCritMultiplier(c)));
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
-    log.push({ id: nowId(), type: "rare", text: `火球术！护甲越厚，爆炎越猛。造成 ${dmg} 点魔法伤害。` });
+    log.push({ id: nowId(), type: "rare", text: `火球术！法力越盛，爆炎越猛（受护甲压制）。造成 ${dmg} 点魔法伤害。` });
   } else if (skillId === "arcane_drain") {
     c.statusEffects.mana_shield = Math.max(Number(c.statusEffects.mana_shield || 0), 1);
     log.push({ id: nowId(), type: "rare", text: "魔法盾展开，法力替你承伤。" });
