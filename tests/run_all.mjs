@@ -36,6 +36,7 @@ function main() {
   run("node", ["tests/economy_quests.mjs"]);
   run("node", ["tests/crit_focus.mjs"]);
   run("node", ["tests/purify_guard.mjs"]);
+  run("node", ["tests/log_view.mjs"]);
   run("node", ["tests/class_paths.mjs"]);
   run("node", ["tests/playthrough.mjs", "--silent"]);
   run("node", ["tests/playthrough_seeds.mjs", String(seeds), String(seedBase)]);

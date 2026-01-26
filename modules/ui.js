@@ -1,6 +1,7 @@
 import { DATA } from "./data.js";
 import { exportState, importState, saveState } from "./save.js";
 import { derivePlayerStats, getItemSlot } from "./stats.js";
+import { getVisibleLog } from "./log_view.js";
 
 function el(id) {
   const node = document.getElementById(id);
@@ -61,18 +62,20 @@ export function mountApp({ game }) {
   }
 
   function renderLog(state) {
+    const isMobile = !!(window.matchMedia && window.matchMedia("(max-width: 480px)").matches);
+    const visibleLog = getVisibleLog(state.log, { isMobile, max: 20 });
     const firstDom = $log.querySelector(".log__item");
-    if (firstDom && state.log.length > 0) {
+    if (firstDom && visibleLog.length > 0) {
       const firstId = firstDom.getAttribute("data-id");
-      if (firstId !== state.log[0].id) {
+      if (firstId !== visibleLog[0].id) {
         $log.innerHTML = "";
       }
-    } else if (firstDom && state.log.length === 0) {
+    } else if (firstDom && visibleLog.length === 0) {
       $log.innerHTML = "";
     }
 
     const existing = new Set([...$log.querySelectorAll(".log__item")].map((n) => n.getAttribute("data-id")));
-    for (const entry of state.log) {
+    for (const entry of visibleLog) {
       if (existing.has(entry.id)) continue;
 
       const frag = $logTemplate.content.cloneNode(true);
