@@ -180,6 +180,36 @@ export const DATA = {
       timeCostMin: 10,
       requirements: { flags: ["class_mage"] }
     },
+
+    attune_mana_1: {
+      name: "奥术淬炼 I",
+      inputs: { mana_crystal: 3 },
+      outputs: {},
+      timeCostMin: 15,
+      effects: { stats: { maxMp: 1 } },
+      requirements: { flags: ["has_firepit", "class_mage"] },
+      hiddenIf: { flags: ["crafted_attune_mana_1"] }
+    },
+
+    attune_mana_2: {
+      name: "奥术淬炼 II",
+      inputs: { mana_crystal: 5 },
+      outputs: {},
+      timeCostMin: 20,
+      effects: { stats: { maxMp: 1 } },
+      requirements: { flags: ["has_firepit", "class_mage", "crafted_attune_mana_1"] },
+      hiddenIf: { flags: ["crafted_attune_mana_2"] }
+    },
+
+    attune_mana_3: {
+      name: "奥术淬炼 III",
+      inputs: { mana_crystal: 7 },
+      outputs: {},
+      timeCostMin: 25,
+      effects: { stats: { maxMp: 1 } },
+      requirements: { flags: ["has_firepit", "class_mage", "crafted_attune_mana_2"] },
+      hiddenIf: { flags: ["crafted_attune_mana_3"] }
+    },
     repair_auto_turret: {
       name: "组装自动炮塔",
       inputs: { scrap_metal: 10, iron_ore: 3 },
@@ -1351,9 +1381,9 @@ export const DATA = {
       name: "火球术",
       description: "投出火球，对敌人造成魔法伤害（法力上限越高越痛，但仍受防御减伤）",
       effects: ["magic_damage"],
-      base_damage: 2,
-      mp_scale: 0.4,
-      cooldown: 2,
+      base_damage: 1,
+      mp_scale: 0.6,
+      cooldown: 1,
       mpCost: 4
     },
     deploy_turret: {
@@ -1379,9 +1409,9 @@ export const DATA = {
       name: "魔法盾",
       description: "展开魔法盾，以法力抵挡大部分伤害",
       effects: ["mana_shield"],
-      shield_ratio: 0.8,
+      shield_ratio: 0.7,
       cooldown: 2,
-      mpCost: 3
+      mpCost: 4
     },
     shock_swarm: {
       name: "电弧蜂群",

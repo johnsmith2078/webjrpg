@@ -37,6 +37,9 @@
 - `assemble_explosive_trap`：组装爆炸陷阱
 - `enchant_warding_talisman`：附魔护身符
 - `transmute_mana_crystal`：转化法力水晶
+- `attune_mana_1`：奥术淬炼 I（法师：maxMp +1）
+- `attune_mana_2`：奥术淬炼 II（法师：maxMp +1）
+- `attune_mana_3`：奥术淬炼 III（法师：maxMp +1）
 - `repair_auto_turret`：修理自动炮塔
 - `forge_plate_armor`：锻板甲
 - `stitch_warding_robe`：缝制护法长袍
@@ -436,13 +439,15 @@ NPC通过两种方式出现：
 
 #### `fireball`（火球术）
 - **获取**：职业起源回忆（法师）
-- **效果**：造成魔法伤害，基础低、随最大法力上限提升，并按防御减伤（伤害 = damage(2 + floor(maxMp×0.4), 敌方def)，含 0~2 随机）
+- **效果**：造成魔法伤害，基础低、随最大法力上限提升，并按防御减伤（伤害 = damage(1 + floor(maxMp×0.6), 敌方def)，含 0~2 随机）
 - **消耗**：消耗4点MP
+- **冷却**：冷却 1 回合（战斗内冷却）
 
 #### `mana_shield`（魔法盾）
 - **获取**：职业起源回忆（法师）
-- **效果**：展开魔法盾，持续整场战斗；受到伤害时，将 80% 伤害转为法力消耗；法力为 0 时失效
-- **消耗**：消耗3点MP
+- **效果**：展开魔法盾，持续整场战斗；受到伤害时，将 70% 伤害转为法力消耗；法力为 0 时失效
+- **消耗**：消耗4点MP
+- **冷却**：冷却 2 回合（战斗内冷却）
 
 #### `deploy_turret`（部署炮塔）
 - **获取**：职业起源回忆（工程师）
@@ -674,6 +679,9 @@ DATA.equipmentBonuses = {
 | `forge_iron_blade` | 锻铁刃 | iron_ore x2, cedar_wood x2 | iron_blade x1 | has_firepit |
 | `forge_heavy_blade` | 锻造重剑 | iron_ore x4, cedar_wood x3 | heavy_blade x1 | has_firepit, class_warrior, has_iron_blade |
 | `craft_runic_staff` | 制作符文法杖 | cedar_wood x4, mana_crystal x2 | runic_staff x1 | has_firepit, class_mage |
+| `attune_mana_1` | 奥术淬炼 I | mana_crystal x3 | maxMp +1 | has_firepit, class_mage |
+| `attune_mana_2` | 奥术淬炼 II | mana_crystal x5 | maxMp +1 | has_firepit, class_mage, crafted_attune_mana_1 |
+| `attune_mana_3` | 奥术淬炼 III | mana_crystal x7 | maxMp +1 | has_firepit, class_mage, crafted_attune_mana_2 |
 | `assemble_scrap_pistol` | 组装废铁手枪 | scrap_metal x5, cedar_wood x2 | scrap_pistol x1 | has_firepit, class_engineer |
 | `forge_master_blade` | 锻神刃 | iron_ingot x2, monster_fang x2, spirit_stone x1 | master_blade x1 | has_iron_blade, met_blacksmith |
 | `forge_plate_armor` | 锻板甲 | iron_ingot x2, iron_ore x2 | plate_armor x1 | has_firepit, met_blacksmith |
@@ -734,7 +742,7 @@ DATA.equipmentBonuses = {
 ### 10.4 最大属性示例
 
 - 战士终极配装：master_blade (+5) + plate_armor (+3) + rare x2 (+1/+1) = atk 9, def 5
-- 法师终极配装：runic_staff (+1/+5) + warding_robe (+1/+2) + magic x2 (+3 mp) = atk 4, def 1, maxMp 20
+- 法师终极配装：runic_staff (+1/+5) + warding_robe (+1/+2) + magic x2 (+3 mp) = atk 4, def 1, maxMp 20（可用奥术淬炼提升至 23）
 - 工程师终极配装：scrap_pistol (+3) + plate_armor (+3) + tech x2 (+3 en) = atk 6, def 3, maxEn 13
 
 ---
@@ -808,10 +816,10 @@ DATA.equipmentBonuses = {
 | `heal_light` | 战斗内续航（把 SP 变成生命线） | 你在濒死边缘抬一口血，继续压制 | SP 消耗 + 冷却；可被打断/压制 | 与 `mystic_herb`/药剂协同 | 草药师事件/服务教授 |
 | `stealth` | 躲招与翻盘（把一回合变成“免伤窗口”） | 躲掉蓄力重击后反打一套 | SP 消耗 + 冷却 | 反制 `heavy_attack`；与 `counter`/`bound_charm` 协同 | 目标：流浪者教授（可要求 `thieves_tools`） |
 | `power_strike` | 物理爆发（把优势转成击杀） | 破绽出现时一击打穿血线 | SP 消耗 + 冷却 | 与 `focus`/茶/重剑协同 | 战士起源 |
-| `fireball` | 法力驱动（最大法力转伤害） | 法力堆起来后，火球变得更可靠 | MP 消耗 + 冷却 | 法师装备/奥术共鸣；仍可应对 `high_def`（受防御减伤） | 法师起源 |
+| `fireball` | 法力驱动（最大法力转伤害） | 法力堆起来后，火球变得可靠且可持续输出 | MP 消耗(4) + 冷却(1) | 法师装备/奥术共鸣；仍可应对 `high_def`（受防御减伤） | 法师起源 |
 | `deploy_turret` | 持续压制（小伤害连击） | 炮塔开火后每回合都在输出，武器越强跳得越高 | EN 消耗 + 冷却 | 与 `shock_swarm` 协同；随装备成长 | 工程师起源 |
 | `war_cry` | 压制（让敌人伤害变得可控） | Boss 面前一声战吼，接下来的回合都更稳 | SP 消耗 + 冷却 | 反制 `heavy_attack`（减轻重击伤害） | 战士起源 |
-| `mana_shield` | 法力护体（80% 伤害转法力） | 看到重击时开盾硬吃，法力顶住整场战斗 | MP 消耗 + 冷却；法力为 0 则失效 | 与法师装备/回复资源协同 | 法师起源 |
+| `mana_shield` | 法力护体（70% 伤害转法力） | 看到重击时开盾硬吃，法力顶住整场战斗 | MP 消耗(4) + 冷却(2)；法力为 0 则失效 | 与法师装备/回复资源协同 | 法师起源 |
 | `shock_swarm` | 持续压榨（长战/高防的效率解） | 一次释放，后面每回合都在收利息，随装备成长 | EN 消耗 + 冷却 | 反制 `high_def`（通过持续伤害感） | 工程师起源 |
 
 ### 11.5 落地验收（后续实现必须满足）
