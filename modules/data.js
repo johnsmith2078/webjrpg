@@ -101,7 +101,7 @@ export const DATA = {
     runic_staff: { name: "符文法杖", tags: ["weapon", "magic"], slot: "weapon", stats: { atk: 1, maxMp: 5 }, desc: "刻满符文的法杖，能引导法力。" },
     scrap_pistol: { name: "废铁手枪", tags: ["weapon", "tech"], slot: "weapon", stats: { atk: 3 }, desc: "虽然简陋，但能发射致命的弹丸。" },
     plate_armor: { name: "板甲", tags: ["armor"], slot: "armor", stats: { def: 3 }, desc: "厚实的铁甲，提供极高的防御。" },
-    warding_robe: { name: "护法长袍", tags: ["armor", "magic"], slot: "armor", stats: { def: 1, maxMp: 2 }, desc: "轻便的长袍，编织了防护法术。" },
+    warding_robe: { name: "护法长袍", tags: ["armor", "magic"], slot: "armor", stats: { def: 2, maxMp: 2 }, desc: "轻便的长袍，编织了防护法术。" },
     repeating_crossbow: { name: "连弩", tags: ["weapon", "tech"], slot: "weapon", stats: { atk: 3 }, desc: "精密的机械弩，能快速射击。" }
   },
 

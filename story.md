@@ -670,7 +670,7 @@ DATA.equipmentBonuses = {
 | `scrap_pistol` | 废铁手枪 | weapon | atk +3 | - |
 | `repeating_crossbow` | 连弩 | weapon | atk +3 | - |
 | `plate_armor` | 板甲 | armor | def +3 | - |
-| `warding_robe` | 护法长袍 | armor | def +1, maxMp +2 | - |
+| `warding_robe` | 护法长袍 | armor | def +2, maxMp +2 | - |
 
 ### 9.7 制作配方
 
@@ -729,7 +729,7 @@ DATA.equipmentBonuses = {
 | runic_staff | +1 | - | - | +5 | - | - |
 | scrap_pistol | +3 | - | - | - | - | - |
 | plate_armor | - | +3 | - | - | - | - |
-| warding_robe | - | +1 | - | +2 | - | - |
+| warding_robe | - | +2 | - | +2 | - | - |
 
 ### 10.3 组合效果汇总
 
@@ -742,7 +742,7 @@ DATA.equipmentBonuses = {
 ### 10.4 最大属性示例
 
 - 战士终极配装：master_blade (+5) + plate_armor (+3) + rare x2 (+1/+1) = atk 9, def 5
-- 法师终极配装：runic_staff (+1/+5) + warding_robe (+1/+2) + magic x2 (+3 mp) = atk 4, def 1, maxMp 20（可用奥术淬炼提升至 23）
+- 法师终极配装：runic_staff (+1/+5) + warding_robe (+2/+2) + magic x2 (+3 mp) = atk 4, def 2, maxMp 20（可用奥术淬炼提升至 23）
 - 工程师终极配装：scrap_pistol (+3) + plate_armor (+3) + tech x2 (+3 en) = atk 6, def 3, maxEn 13
 
 ---

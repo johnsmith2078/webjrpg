@@ -1,9 +1,12 @@
 import { createInitialState } from "../modules/state.js";
 import { createGame } from "../modules/game.js";
 import { DATA } from "../modules/data.js";
+import { listAvailableRecipes, canCraft } from "../modules/crafting.js";
 import { derivePlayerStats } from "../modules/stats.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+let DESIRED_CLASS_ID = null;
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);
@@ -45,6 +48,34 @@ function countItem(state, id) {
   return Number(state.inventory[id] || 0);
 }
 
+function canSeeRecipe(state, recipeId) {
+  return listAvailableRecipes(state).some((r) => r.id === recipeId);
+}
+
+function tryCraft(game, recipeId) {
+  const s = game.getState();
+  const recipe = DATA.recipes[recipeId];
+  if (!recipe) return false;
+  if (!canSeeRecipe(s, recipeId)) return false;
+  if (!canCraft(s, recipe)) return false;
+  game.handleChoice("craft");
+  game.handleChoice(`craft:${recipeId}`);
+  return true;
+}
+
+function craftUntil(game, recipeId, itemId, targetQty) {
+  const recipe = DATA.recipes[recipeId];
+  if (!recipe) return;
+  for (let i = 0; i < 50; i++) {
+    const s = game.getState();
+    if (countItem(s, itemId) >= targetQty) return;
+    if (!canSeeRecipe(s, recipeId)) return;
+    if (!canCraft(s, recipe)) return;
+    game.handleChoice("craft");
+    game.handleChoice(`craft:${recipeId}`);
+  }
+}
+
 function doUntil(game, pred, stepFn, limit, label) {
   for (let i = 0; i < limit; i++) {
     if (pred()) return i;
@@ -61,6 +92,9 @@ function resolvePromptIfAny(game) {
   // Prefer deterministic options for certain prompts.
   // Keep choices that are beneficial for progression (loot/power).
   let c = null;
+  if (s.prompt.title === "起源" && DESIRED_CLASS_ID) {
+    c = choices.find((x) => x.id === DESIRED_CLASS_ID && !x.disabled);
+  }
   if (s.prompt.title === "岔路") {
     c = choices.find((x) => x.id === "long" && !x.disabled);
   }
@@ -83,10 +117,14 @@ function travelTo(game, id) {
 
 function maybeHeal(game) {
   const s = game.getState();
+  const derived = derivePlayerStats(s);
+  const maxHp = Number(derived.maxHp || s.player.maxHp || 20);
+  const healSkillThreshold = Math.max(10, Math.floor(maxHp * 0.25));
+  const consumeThreshold = Math.max(12, Math.floor(maxHp * 0.35));
   if (
     s.combat &&
     // heal_light uses SP (limited per fight); save it for when it matters.
-    s.player.hp <= 10 &&
+    s.player.hp <= healSkillThreshold &&
     s.flags.skills_learned_heal_light &&
     (s.player.sp || 0) >= 1 &&
     (!s.combat.skillCooldowns || !s.combat.skillCooldowns.heal_light)
@@ -94,15 +132,15 @@ function maybeHeal(game) {
     game.handleChoice("skill:heal_light");
     return;
   }
-  if (s.player.hp <= 12 && (s.inventory.health_potion || 0) > 0) {
+  if (s.player.hp <= consumeThreshold && (s.inventory.health_potion || 0) > 0) {
     game.handleChoice("use:health_potion");
     return;
   }
-  if (s.player.hp <= 12 && (s.inventory.onigiri || 0) > 0) {
+  if (s.player.hp <= consumeThreshold && (s.inventory.onigiri || 0) > 0) {
     game.handleChoice("use:onigiri");
     return;
   }
-  if (s.player.hp <= 10 && (s.inventory.herbs || 0) > 0) {
+  if (s.player.hp <= healSkillThreshold && (s.inventory.herbs || 0) > 0) {
     game.handleChoice("use:herbs");
   }
 }
@@ -130,7 +168,7 @@ function resolveCombat(game) {
       const isTough = !!enemyId && toughEnemies.has(enemyId);
       const isBoss = enemyId === "crystal_overseer" || enemyId === "clockwork_titan" || enemyId === "mine_warlord";
       // Boss fights are tuned to assume some resource usage; keep the test stable by spending defensively here.
-      const useConsumables = isBoss;
+      const useConsumables = enemyId === "clockwork_titan" || enemyId === "mine_warlord";
 
       if (cs.combat && enemyId === "shrine_guardian" && (cs.inventory.bound_charm || 0) > 0) {
         game.handleChoice("use:bound_charm");
@@ -159,6 +197,23 @@ function resolveCombat(game) {
         game.handleChoice("skill:purify");
       } else if (cs.combat && isTough && canPurify(cs) && !cs.combat.usedPurify) {
         game.handleChoice("skill:purify");
+      } else if (
+        cs.combat &&
+        useConsumables &&
+        cs.flags.skills_learned_mana_shield &&
+        (cs.player.hp || 0) <= 14 &&
+        (cs.player.mp || 0) >= 4 &&
+        (!cs.combat.statusEffects || !cs.combat.statusEffects.mana_shield) &&
+        (!cs.combat.skillCooldowns || !cs.combat.skillCooldowns.mana_shield)
+      ) {
+        game.handleChoice("skill:mana_shield");
+      } else if (
+        cs.combat &&
+        cs.flags.skills_learned_fireball &&
+        (cs.player.mp || 0) >= 4 &&
+        (!cs.combat.skillCooldowns || !cs.combat.skillCooldowns.fireball)
+      ) {
+        game.handleChoice("skill:fireball");
       } else if (
         cs.combat &&
         cs.flags.skills_learned_power_strike &&
@@ -190,6 +245,9 @@ function resolveCombat(game) {
 export function runPlaythrough(opts = {}) {
   const seed = Number.isFinite(opts.seed) ? opts.seed : Number(opts.seed || 123);
   const silent = !!opts.silent;
+  const classId = typeof opts.classId === "string" ? String(opts.classId) : null;
+
+  DESIRED_CLASS_ID = classId;
 
   const state = createInitialState(seed);
   const game = createGame({ state });
@@ -420,6 +478,52 @@ export function runPlaythrough(opts = {}) {
   assert(derivePlayerStats(game.getState()).atk >= 5, "锻铁刃应提升攻击");
   assert(countItem(game.getState(), "iron_blade") >= 1, "应获得 道具：铁刃");
 
+  // Mage prep: craft runic staff BEFORE shrine is cleansed (avoids triggering crystal_overseer).
+  if (game.getState().flags.class_mage && !game.getState().flags.has_runic_staff) {
+    // runic_staff: cedar_wood x4 + mana_crystal x2
+    // warding_robe: cedar_wood x2 + mana_crystal x1 + spirit_stone x1
+    // total for the full early mage package: cedar_wood x6 + mana_crystal x3 + spirit_stone x1
+    if (countItem(game.getState(), "cedar_wood") < 6) {
+      doUntil(
+        game,
+        () => countItem(game.getState(), "cedar_wood") >= 6,
+        () => {
+          game.handleChoice("explore");
+          resolvePromptIfAny(game);
+          resolveCombat(game);
+        },
+        200,
+        "补杉木(法师套装)"
+      );
+    }
+
+    travelTo(game, "forest_path");
+    travelTo(game, "crystal_cave");
+    doUntil(
+      game,
+      () => countItem(game.getState(), "mana_crystal") >= 3 && countItem(game.getState(), "spirit_stone") >= 1,
+      () => {
+        game.handleChoice("explore");
+        resolvePromptIfAny(game);
+        resolveCombat(game);
+      },
+      200,
+      "收集材料(法师套装)"
+    );
+    game.handleChoice("craft");
+    game.handleChoice("craft:craft_runic_staff");
+    assert(game.getState().flags.has_runic_staff, "制作符文法杖后应有 has_runic_staff");
+
+    if (!game.getState().flags.has_warding_robe) {
+      game.handleChoice("craft");
+      game.handleChoice("craft:stitch_warding_robe");
+      assert(game.getState().flags.has_warding_robe, "缝制护法长袍后应有 has_warding_robe");
+    }
+
+    // Continue route from forest_path.
+    travelTo(game, "forest_path");
+  }
+
   // 8) 回到古神社刷出守护者并击败
   if (game.getState().location === "village") {
     travelTo(game, "forest_path");
@@ -486,9 +590,11 @@ export function runPlaythrough(opts = {}) {
     );
   }
 
-  game.handleChoice("craft");
-  game.handleChoice("craft:forge_heavy_blade");
-  assert(game.getState().flags.has_heavy_blade, "锻造重剑后应有 has_heavy_blade");
+  if (game.getState().flags.class_warrior) {
+    game.handleChoice("craft");
+    game.handleChoice("craft:forge_heavy_blade");
+    assert(game.getState().flags.has_heavy_blade, "锻造重剑后应有 has_heavy_blade");
+  }
   doUntil(
     game,
     () => countItem(game.getState(), "rice") >= 8,
@@ -504,9 +610,10 @@ export function runPlaythrough(opts = {}) {
     game.handleChoice("craft");
     game.handleChoice("craft:cook_rice");
   }
+  const herbTarget = game.getState().flags.class_mage ? 25 : 3;
   doUntil(
     game,
-    () => countItem(game.getState(), "herbs") >= 3,
+    () => countItem(game.getState(), "herbs") >= herbTarget,
     () => {
       game.handleChoice("travel");
       game.handleChoice("travel:forest_path");
@@ -516,9 +623,33 @@ export function runPlaythrough(opts = {}) {
       game.handleChoice("travel");
       game.handleChoice("travel:village");
     },
-    120,
+    200,
     "补苦草"
   );
+
+  // Mage stability: prep boss consumables (warding_talisman / focus_tea / extra bound_charm).
+  if (game.getState().flags.class_mage) {
+    travelTo(game, "forest_path");
+    travelTo(game, "old_shrine");
+    doUntil(
+      game,
+      () => countItem(game.getState(), "paper_charm") >= 12,
+      () => {
+        game.handleChoice("explore");
+        resolvePromptIfAny(game);
+        resolveCombat(game);
+      },
+      200,
+      "补纸符(法师补给)"
+    );
+
+    travelTo(game, "forest_path");
+    travelTo(game, "village");
+
+    craftUntil(game, "bind_charm", "bound_charm", 4);
+    craftUntil(game, "enchant_warding_talisman", "warding_talisman", 4);
+    craftUntil(game, "craft_focus_tea", "focus_tea", 2);
+  }
 
   // 9) 击败分支首领：晶域监视者
   travelTo(game, "forest_path");
@@ -537,12 +668,42 @@ export function runPlaythrough(opts = {}) {
     "击败晶域监视者"
   );
 
+  // Mage power curve: after clearing crystal_overseer, grind enough mana_crystal for attunement.
+  if (game.getState().flags.class_mage) {
+    for (const rid of ["attune_mana_1", "attune_mana_2"]) {
+      const recipe = DATA.recipes[rid];
+      if (!recipe) continue;
+      if (!canSeeRecipe(game.getState(), rid)) continue;
+      if (!canCraft(game.getState(), recipe)) {
+        doUntil(
+          game,
+          () => canCraft(game.getState(), recipe),
+          () => {
+            game.handleChoice("explore");
+            resolvePromptIfAny(game);
+            resolveCombat(game);
+          },
+          200,
+          `补材料(${rid})`
+        );
+      }
+      tryCraft(game, rid);
+    }
+  }
+
   // 9.5) 备一件基础护甲：降低后续 Boss 战的波动
   if (!game.getState().flags.has_warding_robe) {
     game.handleChoice("craft");
     game.handleChoice("craft:stitch_warding_robe");
   }
   assert(game.getState().flags.has_warding_robe, "应能制作护法长袍用于后续战斗");
+
+  // Mage ramp: convert spare mana_crystal into maxMp (boss-focused).
+  if (game.getState().flags.class_mage) {
+    for (const rid of ["attune_mana_1", "attune_mana_2", "attune_mana_3"]) {
+      tryCraft(game, rid);
+    }
+  }
 
   // 10) 击败分支首领：发条巨像
   travelTo(game, "forest_path");
@@ -595,14 +756,28 @@ export function runPlaythrough(opts = {}) {
     console.log("PASS: 全流程通关测试");
     console.log(JSON.stringify(final, null, 2));
   }
+  DESIRED_CLASS_ID = null;
   return final;
 }
 
 function main() {
-  const seedArg = process.argv.slice(2).find((x) => !x.startsWith("-"));
-  const seed = seedArg ? Number(seedArg) : 123;
-  const silent = process.argv.includes("--silent");
-  return runPlaythrough({ seed, silent });
+  const argv = process.argv.slice(2);
+  let seed = 123;
+  let classId = null;
+  let silent = false;
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "--silent") {
+      silent = true;
+    } else if (a === "--class") {
+      classId = argv[i + 1] ? String(argv[i + 1]) : null;
+      i++;
+    } else if (!a.startsWith("-")) {
+      const n = Number(a);
+      if (Number.isFinite(n)) seed = n;
+    }
+  }
+  return runPlaythrough({ seed, silent, classId });
 }
 
 const isMain = (() => {

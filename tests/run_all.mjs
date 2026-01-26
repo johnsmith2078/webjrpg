@@ -41,6 +41,15 @@ function main() {
   run("node", ["tests/class_paths.mjs"]);
   run("node", ["tests/playthrough.mjs", "--silent"]);
   run("node", ["tests/playthrough_seeds.mjs", String(seeds), String(seedBase)]);
+  run("node", [
+    "tests/playthrough_seeds.mjs",
+    "--seeds",
+    String(seeds),
+    "--seed-base",
+    String(seedBase),
+    "--class",
+    "mage"
+  ]);
   console.log("PASS: all tests");
 }
 
