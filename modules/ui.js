@@ -63,7 +63,7 @@ export function mountApp({ game }) {
 
   function renderLog(state) {
     const isMobile = !!(window.matchMedia && window.matchMedia("(max-width: 480px)").matches);
-    const visibleLog = getVisibleLog(state.log, { isMobile, max: 20 });
+    const visibleLog = getVisibleLog(state.log, { isMobile, max: 5 });
     const firstDom = $log.querySelector(".log__item");
     if (firstDom && visibleLog.length > 0) {
       const firstId = firstDom.getAttribute("data-id");

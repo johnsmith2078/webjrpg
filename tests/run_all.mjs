@@ -50,6 +50,15 @@ function main() {
     "--class",
     "mage"
   ]);
+  run("node", [
+    "tests/playthrough_seeds.mjs",
+    "--seeds",
+    String(seeds),
+    "--seed-base",
+    String(seedBase),
+    "--class",
+    "engineer"
+  ]);
   console.log("PASS: all tests");
 }
 

@@ -13,7 +13,7 @@ function testLogwrapMaxHeight() {
   const css = fs.readFileSync(new URL("../styles.css", import.meta.url), "utf8");
   const block = extractLogwrapBlock(css);
   assert(block, "未找到 .logwrap 样式块");
-  assert(/max-height:\s*min\(40vh/.test(block), "PC 端 logwrap 最大高度应为 40vh");
+  assert(/max-height:\s*min\(30vh/.test(block), "PC 端 logwrap 最大高度应为 30vh");
 }
 
 try {

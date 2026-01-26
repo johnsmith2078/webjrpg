@@ -168,7 +168,7 @@ function resolveCombat(game) {
       const isTough = !!enemyId && toughEnemies.has(enemyId);
       const isBoss = enemyId === "crystal_overseer" || enemyId === "clockwork_titan" || enemyId === "mine_warlord";
       // Boss fights are tuned to assume some resource usage; keep the test stable by spending defensively here.
-      const useConsumables = enemyId === "clockwork_titan" || enemyId === "mine_warlord";
+      const useConsumables = isBoss && !cs.flags.class_mage;
 
       if (cs.combat && enemyId === "shrine_guardian" && (cs.inventory.bound_charm || 0) > 0) {
         game.handleChoice("use:bound_charm");
@@ -193,6 +193,24 @@ function resolveCombat(game) {
         !cs.combat.enemyStun
       ) {
         game.handleChoice("use:bound_charm");
+      } else if (
+        cs.combat &&
+        (isBoss || isTough) &&
+        cs.flags.skills_learned_deploy_turret &&
+        (cs.player.en || 0) >= 4 &&
+        (!cs.combat.statusEffects || !cs.combat.statusEffects.turret) &&
+        (!cs.combat.skillCooldowns || !cs.combat.skillCooldowns.deploy_turret)
+      ) {
+        game.handleChoice("skill:deploy_turret");
+      } else if (
+        cs.combat &&
+        (isBoss || isTough) &&
+        cs.flags.skills_learned_shock_swarm &&
+        (cs.player.en || 0) >= 3 &&
+        (!cs.combat.statusEffects || !cs.combat.statusEffects.swarm) &&
+        (!cs.combat.skillCooldowns || !cs.combat.skillCooldowns.shock_swarm)
+      ) {
+        game.handleChoice("skill:shock_swarm");
       } else if (cs.combat && enemyId === "shrine_guardian" && canPurify(cs) && !cs.combat.usedPurify) {
         game.handleChoice("skill:purify");
       } else if (cs.combat && isTough && canPurify(cs) && !cs.combat.usedPurify) {
@@ -524,6 +542,43 @@ export function runPlaythrough(opts = {}) {
     travelTo(game, "forest_path");
   }
 
+  // Engineer prep: craft scrap pistol BEFORE shrine is cleansed (avoids triggering clockwork_titan).
+  if (game.getState().flags.class_engineer && !game.getState().flags.has_scrap_pistol) {
+    if (countItem(game.getState(), "cedar_wood") < 2) {
+      doUntil(
+        game,
+        () => countItem(game.getState(), "cedar_wood") >= 2,
+        () => {
+          game.handleChoice("explore");
+          resolvePromptIfAny(game);
+          resolveCombat(game);
+        },
+        200,
+        "补杉木(工程师手枪)"
+      );
+    }
+
+    travelTo(game, "forest_path");
+    travelTo(game, "ancient_lab");
+    doUntil(
+      game,
+      () => countItem(game.getState(), "scrap_metal") >= 5,
+      () => {
+        game.handleChoice("explore");
+        resolvePromptIfAny(game);
+        resolveCombat(game);
+      },
+      200,
+      "收集废金属(工程师手枪)"
+    );
+    game.handleChoice("craft");
+    game.handleChoice("craft:assemble_scrap_pistol");
+    assert(game.getState().flags.has_scrap_pistol, "组装废铁手枪后应有 has_scrap_pistol");
+
+    // Continue route from forest_path.
+    travelTo(game, "forest_path");
+  }
+
   // 8) 回到古神社刷出守护者并击败
   if (game.getState().location === "village") {
     travelTo(game, "forest_path");
@@ -610,7 +665,7 @@ export function runPlaythrough(opts = {}) {
     game.handleChoice("craft");
     game.handleChoice("craft:cook_rice");
   }
-  const herbTarget = game.getState().flags.class_mage ? 25 : 3;
+  const herbTarget = game.getState().flags.class_mage || game.getState().flags.class_engineer ? 25 : 3;
   doUntil(
     game,
     () => countItem(game.getState(), "herbs") >= herbTarget,
@@ -627,8 +682,8 @@ export function runPlaythrough(opts = {}) {
     "补苦草"
   );
 
-  // Mage stability: prep boss consumables (warding_talisman / focus_tea / extra bound_charm).
-  if (game.getState().flags.class_mage) {
+  // Mage/Engineer stability: prep boss consumables (warding_talisman / focus_tea / extra bound_charm).
+  if (game.getState().flags.class_mage || game.getState().flags.class_engineer) {
     travelTo(game, "forest_path");
     travelTo(game, "old_shrine");
     doUntil(
@@ -692,11 +747,39 @@ export function runPlaythrough(opts = {}) {
   }
 
   // 9.5) 备一件基础护甲：降低后续 Boss 战的波动
-  if (!game.getState().flags.has_warding_robe) {
-    game.handleChoice("craft");
-    game.handleChoice("craft:stitch_warding_robe");
+  if (game.getState().flags.class_engineer) {
+    // plate_armor: iron_ingot x2 + iron_ore x2
+    if (!game.getState().flags.has_plate_armor) {
+      travelTo(game, "forest_path");
+      travelTo(game, "old_shrine");
+      travelTo(game, "abandoned_mine");
+      doUntil(
+        game,
+        () => countItem(game.getState(), "iron_ore") >= 8,
+        () => {
+          game.handleChoice("explore");
+          resolvePromptIfAny(game);
+          resolveCombat(game);
+        },
+        300,
+        "补铁矿石(工程师板甲)"
+      );
+      travelTo(game, "old_shrine");
+      travelTo(game, "forest_path");
+      travelTo(game, "village");
+
+      craftUntil(game, "refine_iron", "iron_ingot", 2);
+      game.handleChoice("craft");
+      game.handleChoice("craft:forge_plate_armor");
+    }
+    assert(game.getState().flags.has_plate_armor, "工程师应能准备板甲用于后续战斗");
+  } else {
+    if (!game.getState().flags.has_warding_robe) {
+      game.handleChoice("craft");
+      game.handleChoice("craft:stitch_warding_robe");
+    }
+    assert(game.getState().flags.has_warding_robe, "应能制作护法长袍用于后续战斗");
   }
-  assert(game.getState().flags.has_warding_robe, "应能制作护法长袍用于后续战斗");
 
   // Mage ramp: convert spare mana_crystal into maxMp (boss-focused).
   if (game.getState().flags.class_mage) {
