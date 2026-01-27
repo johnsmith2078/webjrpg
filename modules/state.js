@@ -60,6 +60,11 @@ export function isUnlocked(state, rule) {
   if (!rule || rule.type === "start") return true;
   if (rule.type === "time") return state.timeMin >= (rule.afterMin || 0);
   if (rule.type === "flag") return !!state.flags[rule.flag];
+  if (rule.type === "item") {
+    const inv = state.inventory && typeof state.inventory === "object" ? state.inventory : {};
+    const q = Number(rule.qty || 1);
+    return Number(inv[rule.item] || 0) >= q;
+  }
   if (rule.type === "all" && Array.isArray(rule.of)) {
     return rule.of.every((r) => isUnlocked(state, r));
   }

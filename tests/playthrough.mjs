@@ -155,7 +155,9 @@ function resolveCombat(game) {
     "crystal_golem",
     "crystal_overseer",
     "clockwork_titan",
-    "mine_warlord"
+    "mine_warlord",
+    "works_guardian",
+    "heart_pump_guardian"
   ]);
   for (let i = 0; i < 200; i++) {
     const st = game.getState();
@@ -166,7 +168,11 @@ function resolveCombat(game) {
       const cs = game.getState();
       const enemyId = cs.combat ? cs.combat.enemyId : null;
       const isTough = !!enemyId && toughEnemies.has(enemyId);
-      const isBoss = enemyId === "crystal_overseer" || enemyId === "clockwork_titan" || enemyId === "mine_warlord";
+      const isBoss =
+        enemyId === "crystal_overseer" ||
+        enemyId === "clockwork_titan" ||
+        enemyId === "mine_warlord" ||
+        enemyId === "heart_pump_guardian";
       // Boss fights are tuned to assume some resource usage; keep the test stable by spending defensively here.
       const useConsumables = isBoss && !cs.flags.class_mage;
 
@@ -264,6 +270,8 @@ export function runPlaythrough(opts = {}) {
   const seed = Number.isFinite(opts.seed) ? opts.seed : Number(opts.seed || 123);
   const silent = !!opts.silent;
   const classId = typeof opts.classId === "string" ? String(opts.classId) : null;
+  const ending = typeof opts.ending === "string" ? String(opts.ending) : "seal";
+  const ch3Ending = typeof opts.ch3Ending === "string" ? String(opts.ch3Ending) : "reset";
 
   DESIRED_CLASS_ID = classId;
 
@@ -363,6 +371,21 @@ export function runPlaythrough(opts = {}) {
     "触发草药师对话"
   );
   assert(game.getState().quests["herbalist_collection"], "应触发草药采集任务");
+
+  // Keep route later needs thieves_tools to open the lockyard chest.
+  if (ending === "keep") {
+    doUntil(
+      game,
+      () => countItem(game.getState(), "thieves_tools") >= 1,
+      () => {
+        game.handleChoice("explore");
+        resolvePromptIfAny(game);
+        resolveCombat(game);
+      },
+      120,
+      "获得盗贼工具"
+    );
+  }
 
   // 3) 在杉径刷苦草
   doUntil(
@@ -831,8 +854,94 @@ export function runPlaythrough(opts = {}) {
   // 触发结局事件（会弹出 prompt），选择封印结局。
   game.handleChoice("explore");
   assert(!!game.getState().prompt, "山口应弹出结局选择");
-  game.handleChoice("prompt:seal");
-  assert(game.getState().gameOver, "选择结局后应 gameOver");
+
+  if (ending === "keep") {
+    game.handleChoice("prompt:keep");
+    assert(!game.getState().gameOver, "选择 keep 后不应 gameOver");
+    assert(game.getState().flags.ending_keep, "选择 keep 后应设置 ending_keep");
+    assert(game.getState().flags.ch2_route_opened, "选择 keep 后应设置 ch2_route_opened");
+
+    // --- Chapter 2 ---
+    travelTo(game, "fogback_waystation");
+    assert(game.getState().location === "fogback_waystation", "应到达 fogback_waystation");
+    game.handleChoice("explore");
+    resolvePromptIfAny(game);
+    resolveCombat(game);
+    assert(game.getState().flags.ch2_rust_opened, "驿站事件后应设置 ch2_rust_opened");
+    const stAfterWaystation = game.getState();
+    const gotWaystationKit =
+      countItem(stAfterWaystation, "fogback_waystation_mail") > 0 ||
+      countItem(stAfterWaystation, "fogback_waystation_robe") > 0 ||
+      countItem(stAfterWaystation, "fogback_waystation_harness") > 0;
+    assert(gotWaystationKit, "职业分支：驿站应获得一件职业装备");
+    if (stAfterWaystation.flags.class_warrior) {
+      assert(countItem(stAfterWaystation, "fogback_waystation_mail") >= 1, "战士分支应获得驿站链甲");
+      assert(stAfterWaystation.flags.skills_learned_sweep, "战士分支应学会横扫");
+    }
+    if (stAfterWaystation.flags.class_mage) {
+      assert(countItem(stAfterWaystation, "fogback_waystation_robe") >= 1, "法师分支应获得驿站长袍");
+    }
+    if (stAfterWaystation.flags.class_engineer) {
+      assert(countItem(stAfterWaystation, "fogback_waystation_harness") >= 1, "工程师分支应获得驿站束具");
+    }
+
+    travelTo(game, "rust_channel");
+    travelTo(game, "lockyard");
+    assert(game.getState().location === "lockyard", "应到达 lockyard");
+    game.handleChoice("explore");
+    resolvePromptIfAny(game);
+    resolveCombat(game);
+    assert(game.getState().flags.opened_lockyard_chest, "打开暗箱后应设置 opened_lockyard_chest");
+    assert(countItem(game.getState(), "repeating_crossbow") >= 1, "暗箱应获得 repeating_crossbow");
+
+    travelTo(game, "rust_channel");
+    travelTo(game, "lower_works");
+    assert(game.getState().location === "lower_works", "应到达 lower_works");
+    game.handleChoice("explore");
+    resolvePromptIfAny(game);
+    resolveCombat(game);
+    assert(game.getState().flags.defeated_works_guardian, "应击败 works_guardian");
+    assert(countItem(game.getState(), "pump_key") >= 1, "应获得 pump_key");
+
+    // --- Chapter 3 ---
+    travelTo(game, "mist_well");
+    assert(game.getState().location === "mist_well", "应到达 mist_well");
+    game.handleChoice("explore");
+    resolvePromptIfAny(game);
+    resolveCombat(game);
+
+    travelTo(game, "paper_atrium");
+    assert(game.getState().location === "paper_atrium", "应到达 paper_atrium");
+    const stoneBefore = countItem(game.getState(), "spirit_stone");
+    game.handleChoice("explore");
+    resolvePromptIfAny(game);
+    resolveCombat(game);
+    assert(game.getState().flags.ch3_imprint_done, "刻印后应设置 ch3_imprint_done");
+    assert(
+      game.getState().flags.skills_learned_stealth || game.getState().flags.skills_learned_counter,
+      "刻印后应学会 stealth 或 counter"
+    );
+    assert(countItem(game.getState(), "spirit_stone") < stoneBefore, "刻印应消耗灵石");
+
+    travelTo(game, "blacklight_heart");
+    assert(game.getState().location === "blacklight_heart", "应到达 blacklight_heart");
+    game.handleChoice("explore");
+    resolvePromptIfAny(game);
+    resolveCombat(game);
+    assert(game.getState().flags.defeated_heart_pump_guardian, "应击败 heart_pump_guardian");
+
+    game.handleChoice("explore");
+    assert(!!game.getState().prompt, "黑光心室应弹出第三章结局选择");
+    const choice = ch3Ending === "bind" ? "bind" : ch3Ending === "smash" ? "smash" : "reset";
+    game.handleChoice(`prompt:${choice}`);
+    assert(game.getState().gameOver, "第三章结局后应 gameOver");
+    if (choice === "reset") assert(game.getState().flags.ending_ch3_reset, "应设置 ending_ch3_reset");
+    if (choice === "bind") assert(game.getState().flags.ending_ch3_bind, "应设置 ending_ch3_bind");
+    if (choice === "smash") assert(game.getState().flags.ending_ch3_smash, "应设置 ending_ch3_smash");
+  } else {
+    game.handleChoice("prompt:seal");
+    assert(game.getState().gameOver, "选择结局后应 gameOver");
+  }
 
   const final = snapshot(game.getState());
   if (!silent) {
@@ -848,6 +957,8 @@ function main() {
   let seed = 123;
   let classId = null;
   let silent = false;
+  let ending = "seal";
+  let ch3Ending = "reset";
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--silent") {
@@ -855,12 +966,18 @@ function main() {
     } else if (a === "--class") {
       classId = argv[i + 1] ? String(argv[i + 1]) : null;
       i++;
+    } else if (a === "--ending") {
+      ending = argv[i + 1] ? String(argv[i + 1]) : "seal";
+      i++;
+    } else if (a === "--ch3-ending") {
+      ch3Ending = argv[i + 1] ? String(argv[i + 1]) : "reset";
+      i++;
     } else if (!a.startsWith("-")) {
       const n = Number(a);
       if (Number.isFinite(n)) seed = n;
     }
   }
-  return runPlaythrough({ seed, silent, classId });
+  return runPlaythrough({ seed, silent, classId, ending, ch3Ending });
 }
 
 const isMain = (() => {

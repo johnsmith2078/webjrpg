@@ -99,7 +99,13 @@
 - `master_blade`：神刃（传说武器）
 - `plate_armor`：板甲（防具）
 - `warding_robe`：护法长袍（防具）
-- `repeating_crossbow`：连弩（武器；当前无获取途径）
+- `repeating_crossbow`：连弩（武器；通过 `lockyard_chest` 获取）
+
+（第二章 / 第三章：职业分支装备）
+
+- `fogback_waystation_mail`：驿站链甲（防具；战士分支）
+- `fogback_waystation_robe`：驿站长袍（防具；法师分支）
+- `fogback_waystation_harness`：驿站束具（防具；工程师分支）
 
 （第二章 / 第三章）
 
@@ -127,7 +133,9 @@
 - `ch2_route_opened`：已打开雾背之路（允许进入雾背驿站）
 - `ch2_rust_opened`：已知锈水渠的路（允许进入锈水渠/锁场/下水工坊）
 - `opened_lockyard_chest`：已打开锁场暗箱（连弩只可获取一次）
+- `defeated_works_guardian`：已击败泵守（用于解锁雾井）
 - `ch3_imprint_done`：已完成刻印（允许进入黑光心室）
+- `defeated_heart_pump_guardian`：已击败主泵守（用于触发第三章结局）
 - `ending_ch3_reset`：第三章结局分支：复位
 - `ending_ch3_bind`：第三章结局分支：绑住
 - `ending_ch3_smash`：第三章结局分支：砸碎
@@ -145,8 +153,8 @@
 - `skills_learned_shock_swarm`：已学会电弧蜂群
 - `skills_learned_heal_light`：已学会微光治愈
 - `skills_learned_sweep`：已学会横扫（当前无获取途径）
-- `skills_learned_stealth`：已学会隐身（当前无获取途径）
-- `skills_learned_counter`：已学会反击（当前无获取途径，且战斗未实现反击触发）
+- `skills_learned_stealth`：已学会隐身（通过 `paper_atrium_imprint` 刻印获得）
+- `skills_learned_counter`：已学会反击（通过 `paper_atrium_imprint` 刻印获得；战斗未实现反击触发）
 - `has_heavy_blade`：已锻造重剑
 - `has_runic_staff`：已制作符文法杖
 - `has_scrap_pistol`：已组装废铁手枪
@@ -355,23 +363,36 @@
 - 解锁：`ch2_route_opened = true`
 - 事件：`ch2_waystation_intro`（once/priority）
 - 结果：设置 `ch2_rust_opened = true`
+- 叙事锚点：雾有铁味；驿站里的人不问来处，只盯着你怀里的东西。
+- 关键人物（叙事称呼）：守渠人（`canal_keeper`）与流浪者（`wanderer`）在此线推进“门/锁”的主题。
+- 雾背规矩（叙事）：夜里不出灯圈，不敲锈铃。
+
+职业分支（第二章：驿站）
+
+- 战士：获得 `fogback_waystation_mail`，并学会 `sweep`
+- 法师：获得 `fogback_waystation_robe`
+- 工程师：获得 `fogback_waystation_harness`
 
 ### Act 7：锈水渠与锁场（`rust_channel` / `lockyard`）
 
 - 解锁：`ch2_rust_opened = true`
 
+- 叙事推进：在 `rust_channel` 第一次看见“雾被引走”的痕迹；铁门上出现鸟居形铆钉（像把神社做成锁）。
+
 关键事件：
 
 - `lockyard_chest`（`lockyard`，once/priority，prompt）
   - 选择：
-    - 撬开暗箱（需要 `thieves_tools x1`）：获得 `repeating_crossbow x1`，并设置 `opened_lockyard_chest = true`
-    - 离开
+    - 撬开暗箱并取走（需要 `thieves_tools x1`）：获得 `repeating_crossbow x1`，并设置 `opened_lockyard_chest = true`；代价：获得 `cursed`
+    - 放过暗箱（不沾灰）：不获得奖励；代价：额外耗时（绕路）
 
 ### Act 8：下水工坊（`lower_works`）
 
 - 事件：`lower_works_guardian`（once/priority）
 - 战斗：`works_guardian`
-- 掉落：`pump_key x1`
+- 掉落：`pump_key x1`（并应确保能获得 `spirit_stone` 用于第三章刻印）
+
+- 章末钩子（叙事）：泵机短暂停下，雾反而更厚，像有人在更深处接管。
 
 ---
 
@@ -381,15 +402,19 @@
 
 ### Act 9：雾井入口（`mist_well`）
 
-- 解锁：`defeated_works_guardian = true`（并获得 `pump_key`）
+- 解锁：`defeated_works_guardian = true` 且持有 `pump_key x1`
 - 事件：`ch3_mist_well_intro`（once/priority）
+
+- 叙事推进：雾不再飘，像水贴墙；井口边碎纸符的墨迹像干掉的血。
 
 ### Act 10：纸符天井（`paper_atrium`）
 
 - 事件：`paper_atrium_imprint`（once/priority，prompt）
 - 选择：
-  - `imprint_stealth`：学会 `stealth`
-  - `imprint_counter`：学会 `counter`
+  - `imprint_stealth`：消耗 `spirit_stone x1`，学会 `stealth`，并设置 `ch3_imprint_done = true`
+  - `imprint_counter`：消耗 `spirit_stone x1`，学会 `counter`，并设置 `ch3_imprint_done = true`
+
+- 主题反转（叙事）：雾既是诅咒也是封条；遗物不是奖赏，而是开关。
 
 ### Act 11：黑光心室（`blacklight_heart`）
 
@@ -397,8 +422,16 @@
 - 事件：`ch3_ending`（once/priority，prompt）
 - 选择：
   - `prompt:reset`：设置 `ending_ch3_reset`，结束
-  - `prompt:bind`：设置 `ending_ch3_bind`，结束
+  - `prompt:bind`：消耗 `spirit_stone x1`，设置 `ending_ch3_bind`，结束
   - `prompt:smash`：设置 `ending_ch3_smash`，结束
+
+- 章末变化（叙事）：无论选择，雾的“方向”改变；回到井口时驿站灯更暗，锈铃没有响。
+
+职业分支（第三章：心室前准备）
+
+- 战士：获得一次稳妥的护身手段（例如 `warding_talisman`）再进入战斗
+- 法师：获得一次爆发窗口（例如 `focus_tea`）再进入战斗
+- 工程师：获得一次开场爆破（例如 `explosive_trap`）再进入战斗
 
 ---
 
@@ -410,6 +443,8 @@
 - `forge_iron_blade` 会产出 `iron_blade`（装备攻击 +2，锻造后自动装备）并解锁 `skill:purify`
 - `shrine_guardian` 必掉 `shrine_relic`
 - `pass_ending` 进入 prompt，并能选择 `seal` 完成结局
+- `pass_ending` 进入 prompt，并能选择 `keep` 继续游戏并解锁第二章
+- keep 续作路径可完成第二章（获得 `pump_key`）并进入第三章结局选择
 
 推荐执行：
 - `node tests/playthrough.mjs`

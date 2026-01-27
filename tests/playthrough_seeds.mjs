@@ -9,7 +9,9 @@ function parseArgs(argv) {
   const out = {
     n: argv[0] ? Number(argv[0]) : 20,
     seedBase: argv[1] ? Number(argv[1]) : 1000,
-    classId: null
+    classId: null,
+    ending: "seal",
+    ch3Ending: "reset"
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -23,6 +25,12 @@ function parseArgs(argv) {
     } else if (a === "--class") {
       out.classId = argv[i + 1] ? String(argv[i + 1]) : null;
       i++;
+    } else if (a === "--ending") {
+      out.ending = argv[i + 1] ? String(argv[i + 1]) : "seal";
+      i++;
+    } else if (a === "--ch3-ending") {
+      out.ch3Ending = argv[i + 1] ? String(argv[i + 1]) : "reset";
+      i++;
     }
   }
 
@@ -33,14 +41,14 @@ function parseArgs(argv) {
 }
 
 function main() {
-  const { n, seedBase, classId } = parseArgs(process.argv.slice(2));
+  const { n, seedBase, classId, ending, ch3Ending } = parseArgs(process.argv.slice(2));
 
   const failures = [];
 
   for (let i = 0; i < n; i++) {
     const seed = seedBase + i;
     try {
-      runPlaythrough({ seed, silent: true, classId });
+      runPlaythrough({ seed, silent: true, classId, ending, ch3Ending });
     } catch (e) {
       failures.push({ seed, error: e && e.message ? e.message : String(e || "unknown error") });
     }
@@ -48,7 +56,8 @@ function main() {
 
   assert(failures.length === 0, `多种子通关失败: ${JSON.stringify(failures.slice(0, 5))}`);
   const cls = classId ? ` class=${classId}` : "";
-  console.log(`PASS: 多种子通关测试 (${n} seeds from ${seedBase})${cls}`);
+  const end = ending ? ` ending=${ending}` : "";
+  console.log(`PASS: 多种子通关测试 (${n} seeds from ${seedBase})${cls}${end}`);
 }
 
 try {

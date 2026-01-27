@@ -40,7 +40,15 @@ function main() {
   run("node", ["tests/logwrap_height.mjs"]);
   run("node", ["tests/class_paths.mjs"]);
   run("node", ["tests/playthrough.mjs", "--silent"]);
+  run("node", ["tests/playthrough.mjs", "--silent", "--ending", "keep"]);
   run("node", ["tests/playthrough_seeds.mjs", String(seeds), String(seedBase)]);
+  run("node", [
+    "tests/playthrough_seeds.mjs",
+    String(seeds),
+    String(seedBase),
+    "--ending",
+    "keep"
+  ]);
   run("node", [
     "tests/playthrough_seeds.mjs",
     "--seeds",
@@ -57,7 +65,29 @@ function main() {
     "--seed-base",
     String(seedBase),
     "--class",
+    "mage",
+    "--ending",
+    "keep"
+  ]);
+  run("node", [
+    "tests/playthrough_seeds.mjs",
+    "--seeds",
+    String(seeds),
+    "--seed-base",
+    String(seedBase),
+    "--class",
     "engineer"
+  ]);
+  run("node", [
+    "tests/playthrough_seeds.mjs",
+    "--seeds",
+    String(seeds),
+    "--seed-base",
+    String(seedBase),
+    "--class",
+    "engineer",
+    "--ending",
+    "keep"
   ]);
   console.log("PASS: all tests");
 }

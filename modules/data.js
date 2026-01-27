@@ -47,7 +47,15 @@ export const DATA = {
       name: "山口",
       desc: "风把岩石刮得发白。更高处，有一盏灯在等。",
       connections: ["old_shrine", "fogback_waystation"],
-      unlock: { type: "flag", flag: "shrine_cleansed" }
+      unlock: {
+        type: "all",
+        of: [
+          { type: "flag", flag: "shrine_cleansed" },
+          { type: "flag", flag: "defeated_crystal_overseer" },
+          { type: "flag", flag: "defeated_clockwork_titan" },
+          { type: "flag", flag: "defeated_mine_warlord" }
+        ]
+      }
     },
 
     // Chapter 2/3 (keep route)
@@ -79,13 +87,25 @@ export const DATA = {
       name: "雾井",
       desc: "井口像一张没合拢的嘴。碎纸符贴着石沿。",
       connections: ["lower_works", "paper_atrium"],
-      unlock: { type: "flag", flag: "defeated_works_guardian" }
+      unlock: {
+        type: "all",
+        of: [
+          { type: "flag", flag: "defeated_works_guardian" },
+          { type: "item", item: "pump_key", qty: 1 }
+        ]
+      }
     },
     paper_atrium: {
       name: "纸符天井",
       desc: "井下空腔挂满旧符。风一吹，像有人在翻页。",
       connections: ["mist_well", "blacklight_heart"],
-      unlock: { type: "flag", flag: "defeated_works_guardian" }
+      unlock: {
+        type: "all",
+        of: [
+          { type: "flag", flag: "defeated_works_guardian" },
+          { type: "item", item: "pump_key", qty: 1 }
+        ]
+      }
     },
     blacklight_heart: {
       name: "黑光心室",
@@ -147,6 +167,27 @@ export const DATA = {
     scrap_pistol: { name: "废铁手枪", tags: ["weapon", "tech"], slot: "weapon", stats: { atk: 3 }, desc: "虽然简陋，但能发射致命的弹丸。" },
     plate_armor: { name: "板甲", tags: ["armor"], slot: "armor", stats: { def: 3 }, desc: "厚实的铁甲，提供极高的防御。" },
     warding_robe: { name: "护法长袍", tags: ["armor", "magic"], slot: "armor", stats: { def: 2, maxMp: 2 }, desc: "轻便的长袍，编织了防护法术。" },
+    fogback_waystation_mail: {
+      name: "驿站链甲",
+      tags: ["armor", "rare"],
+      slot: "armor",
+      stats: { def: 2, maxHp: 2 },
+      desc: "旧链甲上还残着杉烟味。穿上它，你的步子更稳。"
+    },
+    fogback_waystation_robe: {
+      name: "驿站长袍",
+      tags: ["armor", "magic", "rare"],
+      slot: "armor",
+      stats: { def: 1, maxMp: 3 },
+      desc: "织纹里夹着碎符。法力像被拢进袖口。"
+    },
+    fogback_waystation_harness: {
+      name: "驿站束具",
+      tags: ["armor", "tech", "rare"],
+      slot: "armor",
+      stats: { def: 1, maxEn: 3 },
+      desc: "皮带与齿轮扣件相连。扣紧后，你的呼吸更省。"
+    },
     repeating_crossbow: { name: "连弩", tags: ["weapon", "tech"], slot: "weapon", stats: { atk: 3 }, desc: "精密的机械弩，能快速射击。" }
   },
 
@@ -758,7 +799,14 @@ export const DATA = {
       w: 5,
       once: true,
       priority: 10,
-      requirements: { flags: ["shrine_cleansed"] },
+      requirements: {
+        flags: [
+          "shrine_cleansed",
+          "defeated_crystal_overseer",
+          "defeated_clockwork_titan",
+          "defeated_mine_warlord"
+        ]
+      },
       text: ["山口处，雾终于断开。", "大山像是松了口气。"],
       prompt: {
         title: "山口",
@@ -805,6 +853,47 @@ export const DATA = {
         "一盏孤灯后，是被遗忘的驿站。木梁带着杉烟，墙里却嵌着齿轮。",
         "有人盯着你怀里的那块东西：\"雾不是天灾，是被人放出来的。\""
       ],
+      prompt: {
+        title: "驿站",
+        choices: [
+          {
+            id: "take_warrior_kit",
+            label: "战士：收下链甲与旧法（学会：横扫）",
+            requires: { flags: ["class_warrior"] },
+            ops: [
+              { op: "gainItem", item: "fogback_waystation_mail", qty: 1 },
+              { op: "setFlag", flag: "skills_learned_sweep" },
+              { op: "log", text: "你接过链甲。重量让你的肩膀更安静。" },
+              { op: "advanceTime", min: 2 }
+            ]
+          },
+          {
+            id: "take_mage_kit",
+            label: "法师：收下长袍与碎符（法力更盛）",
+            requires: { flags: ["class_mage"] },
+            ops: [
+              { op: "gainItem", item: "fogback_waystation_robe", qty: 1 },
+              { op: "log", text: "长袍的内衬贴着皮肤，像一层薄薄的符。" },
+              { op: "advanceTime", min: 2 }
+            ]
+          },
+          {
+            id: "take_engineer_kit",
+            label: "工程师：收下束具与扣件（能量更足）",
+            requires: { flags: ["class_engineer"] },
+            ops: [
+              { op: "gainItem", item: "fogback_waystation_harness", qty: 1 },
+              { op: "log", text: "你扣紧束具。齿轮扣件咬合得很轻。" },
+              { op: "advanceTime", min: 2 }
+            ]
+          },
+          {
+            id: "leave",
+            label: "先不拿（继续赶路）",
+            ops: [{ op: "advanceTime", min: 1 }]
+          }
+        ]
+      },
       ops: [
         { op: "setFlag", flag: "ch2_rust_opened" },
         { op: "advanceTime", min: 6 }
@@ -822,20 +911,25 @@ export const DATA = {
         title: "暗箱",
         choices: [
           {
-            id: "open",
-            label: "撬开暗箱（需要盗贼工具）",
+            id: "open_take",
+            label: "撬开暗箱并取走（需要盗贼工具；会沾上不祥）",
             requires: { item: "thieves_tools", qty: 1 },
             ops: [
               { op: "gainItem", item: "repeating_crossbow", qty: 1 },
               { op: "setFlag", flag: "opened_lockyard_chest" },
+              { op: "setFlag", flag: "cursed" },
               { op: "log", text: "你听见一声轻响，锁舌退回去。" },
+              { op: "log", text: "箱里的灰像活物一样沾上你的指尖。" },
               { op: "advanceTime", min: 8 }
             ]
           },
           {
-            id: "leave",
-            label: "离开",
-            ops: [{ op: "advanceTime", min: 2 }]
+            id: "detour",
+            label: "放过暗箱（不沾灰；绕路更久）",
+            ops: [
+              { op: "log", text: "你把手收回袖里。绕路会更久，但你还想保持干净。" },
+              { op: "advanceTime", min: 15 }
+            ]
           }
         ]
       },
@@ -880,6 +974,7 @@ export const DATA = {
             label: "藏进雾里（学会：隐身）",
             requires: { item: "spirit_stone", qty: 1 },
             ops: [
+              { op: "loseItem", item: "spirit_stone", qty: 1 },
               { op: "setFlag", flag: "skills_learned_stealth" },
               { op: "setFlag", flag: "ch3_imprint_done" },
               { op: "log", text: "雾贴上你的皮肤，你学会让自己变轻。" },
@@ -891,6 +986,7 @@ export const DATA = {
             label: "站住反打（学会：反击）",
             requires: { item: "spirit_stone", qty: 1 },
             ops: [
+              { op: "loseItem", item: "spirit_stone", qty: 1 },
               { op: "setFlag", flag: "skills_learned_counter" },
               { op: "setFlag", flag: "ch3_imprint_done" },
               { op: "log", text: "你把重心放低。雾像一面盾，回声在你骨头里响。" },
@@ -909,10 +1005,53 @@ export const DATA = {
       priority: 10,
       requirements: { flags: ["ch3_imprint_done"] },
       text: ["齿轮咬合的声音更近。黑光像冷，贴着你的牙。"],
-      ops: [
-        { op: "startCombat", enemy: "heart_pump_guardian" },
-        { op: "advanceTime", min: 10 }
-      ]
+      prompt: {
+        title: "心室",
+        choices: [
+          {
+            id: "prep_warrior",
+            label: "战士：稳住呼吸（带上护身符再上）",
+            requires: { flags: ["class_warrior"] },
+            ops: [
+              { op: "gainItem", item: "warding_talisman", qty: 1 },
+              { op: "log", text: "你把护身符贴在胸口。铁味更重，但你不退。" },
+              { op: "advanceTime", min: 2 },
+              { op: "startCombat", enemy: "heart_pump_guardian" }
+            ]
+          },
+          {
+            id: "prep_mage",
+            label: "法师：压住心跳（喝一口凝神茶）",
+            requires: { flags: ["class_mage"] },
+            ops: [
+              { op: "gainItem", item: "focus_tea", qty: 1 },
+              { op: "log", text: "茶香压过了一瞬冷意。你的视线变得更锋利。" },
+              { op: "advanceTime", min: 2 },
+              { op: "startCombat", enemy: "heart_pump_guardian" }
+            ]
+          },
+          {
+            id: "prep_engineer",
+            label: "工程师：先设一手（放好爆炸陷阱）",
+            requires: { flags: ["class_engineer"] },
+            ops: [
+              { op: "gainItem", item: "explosive_trap", qty: 1 },
+              { op: "log", text: "你把引信藏进雾里。只等它迈进那一步。" },
+              { op: "advanceTime", min: 2 },
+              { op: "startCombat", enemy: "heart_pump_guardian" }
+            ]
+          },
+          {
+            id: "charge",
+            label: "直接上前",
+            ops: [
+              { op: "advanceTime", min: 1 },
+              { op: "startCombat", enemy: "heart_pump_guardian" }
+            ]
+          }
+        ]
+      },
+      ops: [{ op: "advanceTime", min: 2 }]
     },
 
     ch3_ending: {
@@ -938,6 +1077,7 @@ export const DATA = {
             label: "绑住（用灵石刻印在身上）",
             requires: { item: "spirit_stone", qty: 1 },
             ops: [
+              { op: "loseItem", item: "spirit_stone", qty: 1 },
               { op: "setFlag", flag: "ending_ch3_bind" },
               { op: "endGame" }
             ]
