@@ -213,8 +213,19 @@ function runEngineerPath() {
       resolvePrompt(game);
       resolveCombat(game, (s) => {
         if (!s.combat) return null;
+        const enemyId = s.combat.enemyId;
         const cd = s.combat.skillCooldowns && s.combat.skillCooldowns.deploy_turret ? s.combat.skillCooldowns.deploy_turret : 0;
+        const cdSwarm = s.combat.skillCooldowns && s.combat.skillCooldowns.shock_swarm ? s.combat.skillCooldowns.shock_swarm : 0;
+
+        // Evasion enemies: lean on DoT and defend to stabilize.
+        if (enemyId === "clockwork_spider") {
+          if (s.flags.skills_learned_deploy_turret && cd === 0 && (s.player.en || 0) >= 4) return "skill:deploy_turret";
+          if (s.flags.skills_learned_shock_swarm && cdSwarm === 0 && (s.player.en || 0) >= 3) return "skill:shock_swarm";
+          return "defend";
+        }
+
         if (s.flags.skills_learned_deploy_turret && cd === 0 && (s.player.en || 0) >= 4) return "skill:deploy_turret";
+        if (s.flags.skills_learned_shock_swarm && cdSwarm === 0 && (s.player.en || 0) >= 3) return "skill:shock_swarm";
         return "attack";
       });
     },

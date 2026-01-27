@@ -157,8 +157,10 @@ function resolveCombat(game) {
     "clockwork_titan",
     "mine_warlord",
     "works_guardian",
-    "heart_pump_guardian"
+    "heart_pump_guardian",
+    "possessed_tree"
   ]);
+  const evasionEnemies = new Set(["shadow_beast", "wolf", "clockwork_spider", "fog_skulker"]);
   for (let i = 0; i < 200; i++) {
     const st = game.getState();
     if (!st.combat) return;
@@ -174,13 +176,48 @@ function resolveCombat(game) {
         enemyId === "mine_warlord" ||
         enemyId === "heart_pump_guardian";
       // Boss fights are tuned to assume some resource usage; keep the test stable by spending defensively here.
-      const useConsumables = isBoss && !cs.flags.class_mage;
+      const useConsumables = (isBoss || isTough) && !cs.flags.class_mage;
+
+      // If cursed, prioritize purify to cleanse (stabilizes curse-using enemies).
+      if (cs.combat && cs.flags.cursed && canPurify(cs) && cs.flags.skills_learned_purify && !cs.combat.usedPurify) {
+        game.handleChoice("skill:purify");
+      } else
 
       // Boss charge/break mechanic: if boss is charging, prefer to interrupt with bound_charm; otherwise defend.
       if (cs.combat && cs.combat.enemyCharge > 0 && (cs.inventory.bound_charm || 0) > 0 && !cs.combat.enemyStun) {
         game.handleChoice("use:bound_charm");
       } else if (cs.combat && cs.combat.enemyCharge > 0) {
         game.handleChoice("defend");
+      } else
+
+      // Summon stacks: clear them with sweep/explosive/stun to reduce incoming pressure.
+      if (cs.combat && (cs.combat.enemySummonStacks || 0) >= 2 && cs.flags.skills_learned_sweep && (cs.player?.sp || 0) >= 2 && (!cs.combat.skillCooldowns || !cs.combat.skillCooldowns.sweep)) {
+        game.handleChoice("skill:sweep");
+      } else if (cs.combat && (cs.combat.enemySummonStacks || 0) >= 2 && (cs.inventory.explosive_trap || 0) > 0) {
+        game.handleChoice("use:explosive_trap");
+      } else if (cs.combat && (cs.combat.enemySummonStacks || 0) >= 2 && (cs.inventory.bound_charm || 0) > 0 && !cs.combat.enemyStun) {
+        game.handleChoice("use:bound_charm");
+      } else
+
+      // Evasion enemies: use focus to ensure hit if available.
+      if (
+        cs.combat &&
+        enemyId &&
+        evasionEnemies.has(enemyId) &&
+        (!cs.combat.statusEffects || !cs.combat.statusEffects.crit_boost) &&
+        cs.flags.skills_learned_focus &&
+        (cs.player?.sp || 0) >= 1 &&
+        (!cs.combat.skillCooldowns || !cs.combat.skillCooldowns.focus)
+      ) {
+        game.handleChoice("skill:focus");
+      } else if (
+        cs.combat &&
+        enemyId &&
+        evasionEnemies.has(enemyId) &&
+        (!cs.combat.statusEffects || !cs.combat.statusEffects.crit_boost) &&
+        (cs.inventory.focus_tea || 0) > 0
+      ) {
+        game.handleChoice("use:focus_tea");
       } else
 
       if (cs.combat && enemyId === "shrine_guardian" && (cs.inventory.bound_charm || 0) > 0) {
@@ -208,7 +245,7 @@ function resolveCombat(game) {
         game.handleChoice("use:bound_charm");
       } else if (
         cs.combat &&
-        (isBoss || isTough) &&
+        (isBoss || isTough || (enemyId && evasionEnemies.has(enemyId))) &&
         cs.flags.skills_learned_deploy_turret &&
         (cs.player.en || 0) >= 4 &&
         (!cs.combat.statusEffects || !cs.combat.statusEffects.turret) &&
@@ -217,7 +254,7 @@ function resolveCombat(game) {
         game.handleChoice("skill:deploy_turret");
       } else if (
         cs.combat &&
-        (isBoss || isTough) &&
+        (isBoss || isTough || (enemyId && evasionEnemies.has(enemyId))) &&
         cs.flags.skills_learned_shock_swarm &&
         (cs.player.en || 0) >= 3 &&
         (!cs.combat.statusEffects || !cs.combat.statusEffects.swarm) &&
@@ -270,7 +307,8 @@ function resolveCombat(game) {
       throw new Error(`战斗失败：游戏结束 (enemy=${lastEnemy})\n${JSON.stringify(snap, null, 2)}`);
     }
   }
-  throw new Error("战斗未在上限步数内结束");
+  const snap = snapshot(game.getState());
+  throw new Error(`战斗未在上限步数内结束 (enemy=${lastEnemy})\n${JSON.stringify(snap, null, 2)}`);
 }
 
 export function runPlaythrough(opts = {}) {

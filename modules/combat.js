@@ -46,6 +46,9 @@ export function startCombat(state, enemyId) {
     enemyTurn: 0,
     enemyCharge: 0,
     enemyBroken: 0,
+    enemyEvasionReady: 0,
+    enemySummonStacks: 0,
+    enemyCursedApplied: false,
     usedPurify: false,
     skillCooldowns: {},
     enemyAtkDown: 0,
@@ -108,9 +111,28 @@ export function resolveCombatAction(state, rng, action) {
   if (c.enemyTurn === undefined) c.enemyTurn = 0;
   if (c.enemyCharge === undefined) c.enemyCharge = 0;
   if (c.enemyBroken === undefined) c.enemyBroken = 0;
+  if (c.enemyEvasionReady === undefined) c.enemyEvasionReady = 0;
+  if (c.enemySummonStacks === undefined) c.enemySummonStacks = 0;
+  if (c.enemyCursedApplied === undefined) c.enemyCursedApplied = false;
   let brokeLog = false;
 
-  const heavyCfg = e && e.heavyAttack && typeof e.heavyAttack === "object" && e.heavyAttack.enabled ? e.heavyAttack : null;
+  const baseTraits = Array.isArray(e.traits) ? e.traits : [];
+  const DEFAULT_HEAVY_CFG = {
+    enabled: true,
+    interval: 4,
+    intervalEnraged: 3,
+    chargedMult: 1.6,
+    defendMult: 0.7,
+    telegraphText: "它开始蓄力。",
+    chargedText: "蓄力重击落下！",
+    breakTurns: 1,
+    breakMult: 1.25,
+    breakText: "你打断了蓄力，敌人露出破绽。",
+    defendBreakText: "你顶住重击，它的动作露出破绽。"
+  };
+  const heavyCfg = e && e.heavyAttack && typeof e.heavyAttack === "object" && e.heavyAttack.enabled
+    ? e.heavyAttack
+    : (baseTraits.includes("heavy_attack") ? DEFAULT_HEAVY_CFG : null);
   const breakMult = heavyCfg ? Number(heavyCfg.breakMult || 1) : 1;
   const applyBreakDamage = (dmg) => {
     const n = Number(dmg || 0);
@@ -166,6 +188,11 @@ export function resolveCombatAction(state, rng, action) {
   }
 
   if (a === "attack") {
+    const sureHit = c.statusEffects.crit_boost > 0;
+    if (baseTraits.includes("evasion") && c.enemyEvasionReady > 0 && !sureHit) {
+      c.enemyEvasionReady = 0;
+      log.push({ id: nowId(), type: "system", text: `「${enemyName}」灵巧地闪避了你的攻击。` });
+    } else {
     let weaponBonus = Number(weaponCombat.damageBonus || 0);
     if (weaponCombat.damageBonusVs && weaponCombat.damageBonusVs[c.enemyId]) {
       weaponBonus += Number(weaponCombat.damageBonusVs[c.enemyId] || 0);
@@ -179,6 +206,7 @@ export function resolveCombatAction(state, rng, action) {
       log.push({ id: nowId(), type: "rare", text: `暴击！你造成了 ${dmg} 点伤害。` });
     } else {
       log.push({ id: nowId(), type: "system", text: `你造成了 ${dmg} 点伤害。` });
+    }
     }
   } else if (a === "defend") {
     c.defending = true;
@@ -205,6 +233,11 @@ export function resolveCombatAction(state, rng, action) {
       c.enemyHp = clamp(c.enemyHp - charmDmg, 0, 9999);
       log.push({ id: nowId(), type: "rare", text: `你掷出「${item.name}」。符火灼伤 ${charmDmg} 点，敌人动作一滞。` });
 
+      if (Number(c.enemySummonStacks || 0) > 0) {
+        c.enemySummonStacks = 0;
+        log.push({ id: nowId(), type: "rare", text: "符火一闪，缠绕的影子散开。" });
+      }
+
       if (itemId === "bound_charm" && heavyCfg && Number(c.enemyCharge || 0) > 0) {
         c.enemyCharge = 0;
         const turns = Math.max(1, Number(heavyCfg.breakTurns || 2));
@@ -219,6 +252,11 @@ export function resolveCombatAction(state, rng, action) {
       dmg = applyBreakDamage(dmg);
       c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
       log.push({ id: nowId(), type: "rare", text: `爆炸陷阱！造成了 ${dmg} 点范围伤害。` });
+
+      if (Number(c.enemySummonStacks || 0) > 0) {
+        c.enemySummonStacks = 0;
+        log.push({ id: nowId(), type: "rare", text: "爆炸把堆叠的缠绕炸散了。" });
+      }
     } else if (item && item.combat && item.combat.type === "ward") {
       log.push({ id: nowId(), type: "rare", text: `「${item.name}」发出微光，你感到安全。` });
       state.inventory[itemId] = qty - 1;
@@ -315,13 +353,12 @@ export function resolveCombatAction(state, rng, action) {
     return { ended: false };
   }
 
-  const traits = e.traits || [];
-  if (traits.includes("evasion") && rng.nextFloat() < 0.3) {
-    log.push({ id: nowId(), type: "system", text: `「${enemyName}」灵巧地闪避了。` });
-    if (chargedThisTurn) c.enemyCharge = 0;
-    c.enemyTurn = Number(c.enemyTurn || 0) + 1;
-    state.log.push(...log);
-    return { ended: false };
+  // Enemy traits: evasion now affects the next player physical attack, not the enemy turn.
+  if (baseTraits.includes("evasion")) {
+    const weaponId = state.equipment && state.equipment.weapon ? state.equipment.weapon : null;
+    const isCrossbow = weaponId === "repeating_crossbow" || weaponId === "repeating_crossbow_mk2";
+    const evadeChance = isCrossbow ? 0.15 : 0.3;
+    c.enemyEvasionReady = rng.nextFloat() < evadeChance ? 1 : 0;
   }
 
   const bonusDef = c.defending ? 2 : 0;
@@ -333,6 +370,9 @@ export function resolveCombatAction(state, rng, action) {
   if (chargedThisTurn) {
     const mult = Math.max(1, Number(heavyCfg.chargedMult || 1.8));
     enemyAtkEff = Math.max(1, Math.floor(enemyAtkEff * mult));
+  }
+  if (baseTraits.includes("summon") && Number(c.enemySummonStacks || 0) > 0) {
+    enemyAtkEff += Number(c.enemySummonStacks || 0);
   }
   let enemyDmg = Math.max(1, damage(enemyAtkEff, effDef + bonusDef, rng, cursedPenalty) - wardReduction);
   if (chargedThisTurn) {
@@ -385,6 +425,27 @@ export function resolveCombatAction(state, rng, action) {
     return { ended: true, won: false, fled: false };
   }
 
+  if (baseTraits.includes("curses") && !state.flags.cursed && !c.enemyCursedApplied) {
+    // Apply once per combat, after a successful enemy hit.
+    state.flags.cursed = true;
+    c.enemyCursedApplied = true;
+    log.push({ id: nowId(), type: "rare", text: "黑灰缠上你的手腕。" });
+  }
+
+  if (baseTraits.includes("summon")) {
+    const turn = Number(c.enemyTurn || 0) + 1;
+    const interval = 3;
+    const maxStacks = 2;
+    // Deterministic stacking pressure.
+    if (interval > 0 && turn % interval === 0) {
+      const next = Math.min(maxStacks, Number(c.enemySummonStacks || 0) + 1);
+      if (next !== Number(c.enemySummonStacks || 0)) {
+        c.enemySummonStacks = next;
+        log.push({ id: nowId(), type: "rare", text: "根须在地面下翻涌。" });
+      }
+    }
+  }
+
   c.enemyTurn = Number(c.enemyTurn || 0) + 1;
   state.log.push(...log);
   return { ended: false };
@@ -393,6 +454,10 @@ export function resolveCombatAction(state, rng, action) {
 function handleSkill(state, skillId, rng, log, applyBreakDamage) {
   const c = state.combat;
   if (!c) return;
+
+  const enemy = DATA.enemies[c.enemyId];
+  const enemyName = enemy && enemy.name ? enemy.name : c.enemyId;
+  const enemyTraits = enemy && Array.isArray(enemy.traits) ? enemy.traits : [];
 
   const skill = DATA.skills[skillId];
   if (!skill) {
@@ -430,6 +495,12 @@ function handleSkill(state, skillId, rng, log, applyBreakDamage) {
     } else if (c.usedPurify) {
       log.push({ id: nowId(), type: "system", text: "这一招已经用过了。" });
     } else {
+      const sureHit = c.statusEffects.crit_boost > 0;
+      if (enemyTraits.includes("evasion") && c.enemyEvasionReady > 0 && !sureHit) {
+        c.enemyEvasionReady = 0;
+        log.push({ id: nowId(), type: "system", text: `「${enemyName}」灵巧地闪避了你的攻击。` });
+        return { ended: false };
+      }
       c.usedPurify = true;
       const base = 3 + sumSkillUpgrade(state, "purify", "dmgBase");
       const bonus = (c.enemyId === "oni_wisp" || c.enemyId === "shrine_guardian") ? 5 : 0;
@@ -455,6 +526,11 @@ function handleSkill(state, skillId, rng, log, applyBreakDamage) {
     log.push({ id: nowId(), type: "rare", text: "你凝神聚力，感知变得敏锐。" });
   } else if (skillId === "sweep") {
     const e = DATA.enemies[c.enemyId];
+    const sureHit = c.statusEffects.crit_boost > 0;
+    if (enemyTraits.includes("evasion") && c.enemyEvasionReady > 0 && !sureHit) {
+      c.enemyEvasionReady = 0;
+      log.push({ id: nowId(), type: "system", text: `「${e.name || c.enemyId}」灵巧地闪避了你的攻击。` });
+    } else {
     const derived = derivePlayerStats(state);
     const pct = Number(skill.damage_percent || 0) + sumSkillUpgrade(state, "sweep", "damage_percent");
     const baseDmg = Math.floor(Number(derived.atk || 0) * (pct / 100));
@@ -462,6 +538,12 @@ function handleSkill(state, skillId, rng, log, applyBreakDamage) {
     if (applyBreakDamage) dmg = applyBreakDamage(dmg);
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     log.push({ id: nowId(), type: "rare", text: `横扫！你造成了 ${dmg} 点范围伤害。` });
+
+      if (Number(c.enemySummonStacks || 0) > 0) {
+        c.enemySummonStacks = 0;
+        log.push({ id: nowId(), type: "rare", text: "你扫断了缠绕，破开一片空隙。" });
+      }
+    }
   } else if (skillId === "heal_light") {
     let healAmt = Number(skill.heal_amount || 0) + sumSkillUpgrade(state, "heal_light", "heal_amount");
     const hasHerb = (state.inventory.mystic_herb || 0) > 0;
@@ -485,6 +567,12 @@ function handleSkill(state, skillId, rng, log, applyBreakDamage) {
     log.push({ id: nowId(), type: "rare", text: "你融入阴影，身形变得模糊。" });
   } else if (skillId === "power_strike") {
     const e = DATA.enemies[c.enemyId];
+    const sureHit = c.statusEffects.crit_boost > 0;
+    if (enemyTraits.includes("evasion") && c.enemyEvasionReady > 0 && !sureHit) {
+      c.enemyEvasionReady = 0;
+      log.push({ id: nowId(), type: "system", text: `「${e.name || c.enemyId}」灵巧地闪避了你的攻击。` });
+      return { ended: false };
+    }
     const derived = derivePlayerStats(state);
     const mult = 1.6 + sumSkillUpgrade(state, "power_strike", "mult");
     const baseAtk = Math.floor(Number(derived.atk || 0) * mult);
@@ -509,7 +597,7 @@ function handleSkill(state, skillId, rng, log, applyBreakDamage) {
     let dmg = Math.max(1, damage(baseAtk, e.def, rng, 0, getCritMultiplier(c)));
     if (applyBreakDamage) dmg = applyBreakDamage(dmg);
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
-    log.push({ id: nowId(), type: "rare", text: `火球术！法力越盛，爆炎越猛（受护甲压制）。造成 ${dmg} 点魔法伤害。` });
+    log.push({ id: nowId(), type: "rare", text: `火球术！法力越盛，爆炎越猛。造成 ${dmg} 点魔法伤害。` });
   } else if (skillId === "mana_shield") {
     c.statusEffects.mana_shield = Math.max(Number(c.statusEffects.mana_shield || 0), 1);
     log.push({ id: nowId(), type: "rare", text: "魔法盾展开，法力替你承伤。" });

@@ -562,8 +562,8 @@ export const DATA = {
     },
     possessed_tree: {
       name: "被附身的树",
-      hp: 28,
-      atk: 3,
+      hp: 24,
+      atk: 2,
       def: 3,
       gold: 15,
       loot: { mystic_herb: 3, cedar_wood: 5 },
@@ -580,9 +580,9 @@ export const DATA = {
     },
     clockwork_spider: {
       name: "发条蜘蛛",
-      hp: 18,
-      atk: 4,
-      def: 2,
+      hp: 16,
+      atk: 3,
+      def: 1,
       gold: 14,
       loot: { scrap_metal: 3 },
       traits: ["evasion"]

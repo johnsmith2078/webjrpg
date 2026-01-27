@@ -41,6 +41,7 @@ function main() {
   run("node", ["tests/upgrades.mjs"]);
   run("node", ["tests/boss_charge_break.mjs"]);
   run("node", ["tests/skill_upgrades.mjs"]);
+  run("node", ["tests/evasion_focus.mjs"]);
   run("node", ["tests/class_paths.mjs"]);
   run("node", ["tests/playthrough.mjs", "--silent"]);
   run("node", ["tests/playthrough.mjs", "--silent", "--ending", "keep"]);
