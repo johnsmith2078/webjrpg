@@ -56,6 +56,20 @@
 - `refine_iron`：提炼铁锭
 - `sell_ore`：出售铁矿石
 
+（第二章 / 第三章：新增配方）
+
+- `brew_rust_salve`：调配锈膏
+- `brew_paper_tonic`：调配纸符补剂
+- `bind_chain_snare`：制作锁链索套
+- `assemble_shrapnel_charge`：组装碎片雷
+- `enchant_fogward_talisman`：附魔雾护符
+- `craft_bitter_focus_tea`：制作苦凝神茶
+
+（第二章 / 第三章：新增装备配方）
+
+- `forge_rust_sabre`：锻造锈刃
+- `stitch_fog_mask`：缝制雾面
+
 ### 1.3 敌人（enemy_id）
 
 - `bandit`：山贼
@@ -70,6 +84,20 @@
 - `crystal_overseer`：晶域监视者（洞窟 Boss）
 - `clockwork_titan`：发条巨像（实验室 Boss）
 - `mine_warlord`：矿脉督战者（废矿 Boss）
+
+（第二章 / 第三章）
+
+- `works_guardian`：泵守（下水工坊 Boss）
+- `heart_pump_guardian`：主泵守（黑光心室 Boss）
+
+（第二章 / 第三章：新增小怪）
+
+- `rust_leech`：锈蚀水蛭（掉落锈鳞/油泥）
+- `lockyard_sentinel`：锁场哨兵（掉落弹簧/铆钉）
+- `fog_skulker`：雾潜客（掉落雾纤维）
+- `paper_swarm`：纸屑群（掉落纸灰/纸符）
+- `steam_wretch`：蒸汽残躯（掉落油泥/废金属）
+- `heart_needle`：心针（掉落墨脂/灵石）
 
 ### 1.4 道具（item_id）
 
@@ -110,6 +138,42 @@
 （第二章 / 第三章）
 
 - `pump_key`：泵钥（关键工具；来自泵守）
+
+（第二章 / 第三章：新增素材）
+
+- `rust_scale`：锈鳞（锈水渠素材）
+- `gear_spring`：齿轮弹簧（锁场素材）
+- `pump_rivet`：泵铆钉（下水工坊素材）
+- `oil_slick`：油泥（工坊/蒸汽素材）
+- `fog_fiber`：雾纤维（雾井素材）
+- `paper_ash`：纸灰（纸符天井素材）
+- `ink_resin`：墨脂（井下素材）
+- `heart_coil`：心室线圈（稀有；主泵守掉落，用于终盘升级）
+
+（第二章 / 第三章：新增战斗道具）
+
+- `rust_salve`：锈膏（恢复）
+- `paper_tonic`：纸符补剂（恢复）
+- `chain_snare`：锁链索套（战斗道具：晕眩 1 回合）
+- `shrapnel_charge`：碎片雷（战斗道具：群体伤害）
+- `fogward_talisman`：雾护符（战斗道具：减少伤害）
+- `bitter_focus_tea`：苦凝神茶（战斗道具：必定暴击并造成双倍伤害）
+
+（第二章 / 第三章：升级装备变体）
+
+- `repeating_crossbow_mk2`：连弩·改（武器升级）
+- `scrap_pistol_calibrated`：废铁手枪·校（武器升级）
+- `runic_staff_etched`：符文法杖·刻（武器升级）
+- `plate_armor_riveted`：板甲·铆（防具升级）
+- `warding_robe_lined`：护法长袍·衬（防具升级）
+- `fogback_waystation_mail_reinforced`：驿站链甲·固（防具升级）
+- `fogback_waystation_robe_inscribed`：驿站长袍·铭（防具升级）
+- `fogback_waystation_harness_overclocked`：驿站束具·超（防具升级）
+
+（第二章 / 第三章：新增装备）
+
+- `rust_sabre`：锈刃（武器；可通过锻造获得）
+- `fog_mask`：雾面（防具；可通过缝制获得）
 
 ### 1.5 关键旗标（flag）
 
@@ -503,6 +567,11 @@ NPC通过两种方式出现：
 
 注：当前实现没有“经验/等级”系统。
 
+补充：技能升级（新增机制）
+
+- 技能可通过铁匠服务进行“Tier 升级”（存储于 `state.skillUpgrades`），消耗素材/金币后提升技能效果（不改变技能解锁旗标）。
+- 常见门槛：`defeated_works_guardian` 解锁 Tier 1，`defeated_heart_pump_guardian` 解锁 Tier 2。
+
 ### 5.2 技能使用机制
 
 - **技能点**：每个技能消耗一定的技能点（SP）
@@ -528,7 +597,7 @@ NPC通过两种方式出现：
 注：`focus_tea` 是独立的战斗消耗品（使用后也会必定暴击并造成双倍伤害），与技能 `focus` 不互相依赖。
 
 #### `sweep`（横扫）
-- **获取**：当前实现无获取途径（技能已定义，但正常流程不可获得）
+- **获取**：第二章驿站战士分支获得（`ch2_waystation_intro` 选择战士奖励）
 - **效果**：对所有敌人造成50%武器伤害
 - **消耗**：消耗 2 点 SP；冷却 2 回合
 
@@ -782,6 +851,11 @@ DATA.equipmentBonuses = {
 - 条件：已装备该槽位、战斗中不可操作
 - 丢弃自动卸下：丢弃最后一件已装备物品时，自动卸下对应槽位
 
+#### 装备升级（新增模块）
+- 形式：把旧装备 + 素材 + 金币升级为“变体装备”（例如 `repeating_crossbow` -> `repeating_crossbow_mk2`）
+- 入口：铁匠（`blacksmith`）服务列表
+- 规则：若升级所消耗的旧装备当前已装备，则升级完成后应自动替换为新装备（避免“装备指向已不存在物品”）
+
 ### 9.6 装备列表
 
 | 物品 ID | 名称 | 槽位 | 属性 | 战斗效果 |
@@ -895,6 +969,12 @@ DATA.equipmentBonuses = {
 | `summon` | `possessed_tree` | “根须在地面下翻涌。”（召唤/堆叠） | 召唤物/缠绕堆叠让战斗失控（持续掉血或减益） | `sweep`（清理召唤物并制造输出窗口）、`explosive_trap`（爆发清场）、`bound_charm`（阻止其连续召唤） |
 
 注：上述为目标实现。实现时要保证：每个 trait 在第一次出现之前，至少有 2 条对策是可达且可理解的。
+
+补充（已落地的 Boss 机制）：
+
+- `heavy_attack`：Boss 会先在 log 中提示“它开始蓄力。”，下一回合打出“蓄力重击”。
+- `bound_charm`：在蓄力期间使用可打断蓄力，并使 Boss 进入“破绽”窗口（数回合内你对其伤害提升）。
+- `defend`：硬吃“蓄力重击”时会额外减伤，并同样制造短暂破绽。
 
 ### 11.3 道具爽点矩阵（27/27）
 

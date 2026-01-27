@@ -145,6 +145,20 @@ export const DATA = {
     warding_talisman: { name: "护身符", tags: ["talisman"], combat: { type: "ward", turns: 2 }, desc: "护身的符咒，能减少受到的伤害。" },
     thieves_tools: { name: "盗贼工具", tags: ["tool"], desc: "一套精致的工具，也许能打开什么。" },
     pump_key: { name: "泵钥", tags: ["tool", "rare"], desc: "一枚冰冷的钥，槽位像鸟居的影子。" },
+    rust_scale: { name: "锈鳞", tags: ["material"], desc: "从锈水渠的东西身上剥下来的硬片，有铁味。" },
+    gear_spring: { name: "齿轮弹簧", tags: ["material", "tech"], desc: "回弹仍有力的弹簧，做工像旧工坊。" },
+    pump_rivet: { name: "泵铆钉", tags: ["material", "tech"], desc: "带鸟居槽的铆钉，拧紧时像在扣住某个门。" },
+    oil_slick: { name: "油泥", tags: ["material"], desc: "黑亮的黏泥，摸上去很凉。" },
+    fog_fiber: { name: "雾纤维", tags: ["material"], desc: "从雾里捻出的细丝，像湿冷的线。" },
+    paper_ash: { name: "纸灰", tags: ["material"], desc: "碎符烧尽后的灰，仍有墨的气味。" },
+    ink_resin: { name: "墨脂", tags: ["material", "rare"], desc: "像凝住的黑光，靠近时指尖会发麻。" },
+    heart_coil: { name: "心室线圈", tags: ["material", "rare"], desc: "从主泵守体内拆出的线圈，冷得像一口井。" },
+    rust_salve: { name: "锈膏", tags: ["medicine"], heal: 8, desc: "抹上去辣得发热，伤口却会很快收紧。" },
+    paper_tonic: { name: "纸符补剂", tags: ["medicine", "rare"], heal: 10, desc: "喝下去像吞了一张纸，随后全身一轻。" },
+    chain_snare: { name: "锁链索套", tags: ["consumable"], combat: { type: "stun", turns: 1 }, desc: "一甩便缠上，能让敌人动作一滞。" },
+    shrapnel_charge: { name: "碎片雷", tags: ["consumable"], combat: { type: "explosive", damage: [8, 12] }, desc: "炸开时像一把碎铁雨。" },
+    fogward_talisman: { name: "雾护符", tags: ["talisman"], combat: { type: "ward", turns: 2 }, desc: "雾在符面上聚成薄膜，替你挡下一些冲击。" },
+    bitter_focus_tea: { name: "苦凝神茶", tags: ["consumable"], combat: { type: "focus", turns: 2 }, desc: "苦到发麻，但破绽会变得清晰。" },
     master_blade: {
       name: "神刃",
       tags: ["weapon", "rare"],
@@ -165,8 +179,23 @@ export const DATA = {
     },
     runic_staff: { name: "符文法杖", tags: ["weapon", "magic"], slot: "weapon", stats: { atk: 1, maxMp: 5 }, desc: "刻满符文的法杖，能引导法力。" },
     scrap_pistol: { name: "废铁手枪", tags: ["weapon", "tech"], slot: "weapon", stats: { atk: 3 }, desc: "虽然简陋，但能发射致命的弹丸。" },
+    rust_sabre: {
+      name: "锈刃",
+      tags: ["weapon", "rare"],
+      slot: "weapon",
+      stats: { atk: 4 },
+      combat: { allowsSkills: ["purify"] },
+      desc: "锈色的刃口却很干净。握着它，你知道该往哪里斩。"
+    },
     plate_armor: { name: "板甲", tags: ["armor"], slot: "armor", stats: { def: 3 }, desc: "厚实的铁甲，提供极高的防御。" },
     warding_robe: { name: "护法长袍", tags: ["armor", "magic"], slot: "armor", stats: { def: 2, maxMp: 2 }, desc: "轻便的长袍，编织了防护法术。" },
+    fog_mask: {
+      name: "雾面",
+      tags: ["armor", "rare"],
+      slot: "armor",
+      stats: { def: 1, maxHp: 2 },
+      desc: "布面上有细密的孔。呼吸穿过去时，雾像被筛了一遍。"
+    },
     fogback_waystation_mail: {
       name: "驿站链甲",
       tags: ["armor", "rare"],
@@ -187,6 +216,62 @@ export const DATA = {
       slot: "armor",
       stats: { def: 1, maxEn: 3 },
       desc: "皮带与齿轮扣件相连。扣紧后，你的呼吸更省。"
+    },
+    repeating_crossbow_mk2: {
+      name: "连弩·改",
+      tags: ["weapon", "tech", "rare"],
+      slot: "weapon",
+      stats: { atk: 4 },
+      desc: "换了更顺的齿轮组，出手更稳。"
+    },
+    scrap_pistol_calibrated: {
+      name: "废铁手枪·校",
+      tags: ["weapon", "tech", "rare"],
+      slot: "weapon",
+      stats: { atk: 4 },
+      desc: "校准后的枪机更干脆，回火也更小。"
+    },
+    runic_staff_etched: {
+      name: "符文法杖·刻",
+      tags: ["weapon", "magic", "rare"],
+      slot: "weapon",
+      stats: { atk: 1, maxMp: 7 },
+      desc: "在旧符纹上再刻一圈，法力像有了回路。"
+    },
+    plate_armor_riveted: {
+      name: "板甲·铆",
+      tags: ["armor", "rare"],
+      slot: "armor",
+      stats: { def: 4 },
+      desc: "用泵铆钉加固后的板甲，像一块能站住的墙。"
+    },
+    warding_robe_lined: {
+      name: "护法长袍·衬",
+      tags: ["armor", "magic", "rare"],
+      slot: "armor",
+      stats: { def: 2, maxMp: 3 },
+      desc: "内衬更密，护法纹路不容易散。"
+    },
+    fogback_waystation_mail_reinforced: {
+      name: "驿站链甲·固",
+      tags: ["armor", "rare"],
+      slot: "armor",
+      stats: { def: 3, maxHp: 2 },
+      desc: "在链环里加了泵铆钉，冲击不再那么刺骨。"
+    },
+    fogback_waystation_robe_inscribed: {
+      name: "驿站长袍·铭",
+      tags: ["armor", "magic", "rare"],
+      slot: "armor",
+      stats: { def: 1, maxMp: 4 },
+      desc: "铭过的符边像锁口，让法力不那么漏。"
+    },
+    fogback_waystation_harness_overclocked: {
+      name: "驿站束具·超",
+      tags: ["armor", "tech", "rare"],
+      slot: "armor",
+      stats: { def: 1, maxEn: 4 },
+      desc: "把扣件换成更紧的齿轮，能量像被拧出来。"
     },
     repeating_crossbow: { name: "连弩", tags: ["weapon", "tech"], slot: "weapon", stats: { atk: 3 }, desc: "精密的机械弩，能快速射击。" }
   },
@@ -375,6 +460,65 @@ export const DATA = {
       outputs: { warding_talisman: 1 },
       timeCostMin: 30,
       requirements: { flags: ["met_herbalist"] }
+    },
+
+    // Chapter 2/3 consumables & materials
+    brew_rust_salve: {
+      name: "调配锈膏",
+      inputs: { herbs: 2, rust_scale: 1 },
+      outputs: { rust_salve: 1 },
+      timeCostMin: 15,
+      requirements: { flags: ["met_herbalist", "ch2_rust_opened"] }
+    },
+    brew_paper_tonic: {
+      name: "调配纸符补剂",
+      inputs: { mystic_herb: 1, paper_ash: 2 },
+      outputs: { paper_tonic: 1 },
+      timeCostMin: 20,
+      requirements: { flags: ["met_herbalist", "defeated_works_guardian"] }
+    },
+    bind_chain_snare: {
+      name: "制作锁链索套",
+      inputs: { pump_rivet: 1, iron_ingot: 1 },
+      outputs: { chain_snare: 1 },
+      timeCostMin: 20,
+      requirements: { flags: ["met_blacksmith", "ch2_rust_opened"] }
+    },
+    assemble_shrapnel_charge: {
+      name: "组装碎片雷",
+      inputs: { iron_ore: 1, gear_spring: 1 },
+      outputs: { shrapnel_charge: 1 },
+      timeCostMin: 20,
+      requirements: { flags: ["met_blacksmith", "ch2_rust_opened"] }
+    },
+    enchant_fogward_talisman: {
+      name: "附魔雾护符",
+      inputs: { paper_charm: 1, fog_fiber: 2, herbs: 2 },
+      outputs: { fogward_talisman: 1 },
+      timeCostMin: 25,
+      requirements: { flags: ["met_herbalist", "ch2_rust_opened"] }
+    },
+    craft_bitter_focus_tea: {
+      name: "制作苦凝神茶",
+      inputs: { herbs: 1, oil_slick: 1 },
+      outputs: { bitter_focus_tea: 1 },
+      timeCostMin: 15,
+      requirements: { flags: ["met_herbalist", "ch2_rust_opened"] }
+    },
+
+    forge_rust_sabre: {
+      name: "锻造锈刃",
+      inputs: { iron_ingot: 1, rust_scale: 2, monster_fang: 1 },
+      outputs: { rust_sabre: 1 },
+      timeCostMin: 25,
+      requirements: { flags: ["has_firepit", "met_blacksmith", "ch2_rust_opened"] }
+    },
+    stitch_fog_mask: {
+      name: "缝制雾面",
+      inputs: { fog_fiber: 3, paper_ash: 1, herbs: 1 },
+      outputs: { fog_mask: 1 },
+      timeCostMin: 20,
+      requirements: { flags: ["has_firepit", "met_herbalist", "defeated_works_guardian"] }
     }
   },
 
@@ -459,7 +603,20 @@ export const DATA = {
       def: 4,
       gold: 32,
       loot: { scrap_metal: 6, iron_ingot: 1 },
-      traits: ["heavy_attack"]
+      traits: ["heavy_attack"],
+      heavyAttack: {
+        enabled: true,
+        interval: 3,
+        intervalEnraged: 2,
+        chargedMult: 1.8,
+        defendMult: 0.6,
+        telegraphText: "它开始蓄力。",
+        chargedText: "蓄力重击落下！",
+        breakTurns: 2,
+        breakMult: 1.5,
+        breakText: "你打断了蓄力，金属关节露出破绽。",
+        defendBreakText: "你顶住重击，它的动作露出破绽。"
+      }
     },
     mine_warlord: {
       name: "矿脉督战者",
@@ -468,27 +625,119 @@ export const DATA = {
       def: 4,
       gold: 34,
       loot: { iron_ingot: 3, monster_fang: 2 },
-      traits: ["curses", "heavy_attack"]
+      traits: ["curses", "heavy_attack"],
+      heavyAttack: {
+        enabled: true,
+        interval: 3,
+        intervalEnraged: 2,
+        chargedMult: 1.8,
+        defendMult: 0.6,
+        telegraphText: "它开始蓄力。",
+        chargedText: "蓄力重击落下！",
+        breakTurns: 2,
+        breakMult: 1.5,
+        breakText: "你打断了蓄力，金属关节露出破绽。",
+        defendBreakText: "你顶住重击，它的动作露出破绽。"
+      }
     },
 
     // Chapter 2/3 (keep route)
+    rust_leech: {
+      name: "锈蚀水蛭",
+      hp: 14,
+      atk: 3,
+      def: 1,
+      gold: 10,
+      loot: { rust_scale: 2, oil_slick: 1 }
+    },
+    lockyard_sentinel: {
+      name: "锁场哨兵",
+      hp: 18,
+      atk: 4,
+      def: 2,
+      gold: 14,
+      loot: { gear_spring: 1, pump_rivet: 1 },
+      traits: ["heavy_attack"]
+    },
+    fog_skulker: {
+      name: "雾潜客",
+      hp: 16,
+      atk: 3,
+      def: 1,
+      gold: 12,
+      loot: { fog_fiber: 2 },
+      traits: ["evasion"]
+    },
+    paper_swarm: {
+      name: "纸屑群",
+      hp: 12,
+      atk: 3,
+      def: 1,
+      gold: 10,
+      loot: { paper_ash: 2, paper_charm: 1 },
+      traits: ["summon"]
+    },
+    steam_wretch: {
+      name: "蒸汽残躯",
+      hp: 20,
+      atk: 4,
+      def: 2,
+      gold: 16,
+      loot: { oil_slick: 2, scrap_metal: 2 },
+      traits: ["heavy_attack"]
+    },
+    heart_needle: {
+      name: "心针",
+      hp: 18,
+      atk: 4,
+      def: 2,
+      gold: 18,
+      loot: { ink_resin: 1, spirit_stone: 1 },
+      traits: ["curses"]
+    },
     works_guardian: {
       name: "泵守",
-      hp: 28,
-      atk: 4,
+      hp: 34,
+      atk: 5,
       def: 3,
-      gold: 24,
-      loot: { pump_key: 1, spirit_stone: 1 },
-      traits: ["heavy_attack"]
+      gold: 30,
+      loot: { pump_key: 1, spirit_stone: 1, pump_rivet: 2 },
+      traits: ["heavy_attack"],
+      heavyAttack: {
+        enabled: true,
+        interval: 3,
+        intervalEnraged: 2,
+        chargedMult: 1.8,
+        defendMult: 0.6,
+        telegraphText: "它开始蓄力。",
+        chargedText: "蓄力重击落下！",
+        breakTurns: 2,
+        breakMult: 1.5,
+        breakText: "你打断了蓄力，金属关节露出破绽。",
+        defendBreakText: "你顶住重击，泵守的关节响了一声。"
+      }
     },
     heart_pump_guardian: {
       name: "主泵守",
-      hp: 42,
-      atk: 5,
+      hp: 48,
+      atk: 6,
       def: 4,
-      gold: 60,
-      loot: { spirit_stone: 1 },
-      traits: ["heavy_attack", "curses", "summon"]
+      gold: 70,
+      loot: { spirit_stone: 1, ink_resin: 1, heart_coil: 1 },
+      traits: ["heavy_attack", "curses", "summon"],
+      heavyAttack: {
+        enabled: true,
+        interval: 3,
+        intervalEnraged: 2,
+        chargedMult: 1.8,
+        defendMult: 0.6,
+        telegraphText: "它开始蓄力。",
+        chargedText: "蓄力重击落下！",
+        breakTurns: 2,
+        breakMult: 1.5,
+        breakText: "你打断了蓄力，主泵守的黑光一滞。",
+        defendBreakText: "你顶住重击，黑光心室的节拍乱了一瞬。"
+      }
     }
   },
 
@@ -936,6 +1185,68 @@ export const DATA = {
       ops: []
     },
 
+    // Chapter 2 roaming encounters
+    rust_channel_leeches: {
+      at: "rust_channel",
+      w: 4,
+      text: ["锈水渠边传来黏滑的声音。"],
+      ops: [
+        { op: "startCombat", enemy: "rust_leech" },
+        { op: "advanceTime", min: 6 }
+      ]
+    },
+    rust_channel_steam_wretch: {
+      at: "rust_channel",
+      w: 3,
+      text: ["蒸汽在雾里咳嗽，一具残躯拖着管道走来。"],
+      ops: [
+        { op: "startCombat", enemy: "steam_wretch" },
+        { op: "advanceTime", min: 6 }
+      ]
+    },
+    rust_channel_scrape: {
+      at: "rust_channel",
+      w: 2,
+      text: ["你从沟渠的铁锈里刮下一些硬片。"],
+      ops: [
+        { op: "gainItem", item: "rust_scale", qty: 1 },
+        { op: "gainItem", item: "oil_slick", qty: 1 },
+        { op: "advanceTime", min: 10 }
+      ]
+    },
+
+    lockyard_patrol: {
+      at: "lockyard",
+      w: 4,
+      requirements: { flags: ["ch2_rust_opened"] },
+      text: ["铁门后传来规律的铆钉声。"],
+      ops: [
+        { op: "startCombat", enemy: "lockyard_sentinel" },
+        { op: "advanceTime", min: 6 }
+      ]
+    },
+    lockyard_fog_skulker: {
+      at: "lockyard",
+      w: 3,
+      requirements: { flags: ["ch2_rust_opened"] },
+      text: ["雾从锁缝里渗出，一个影子贴着地面滑来。"],
+      ops: [
+        { op: "startCombat", enemy: "fog_skulker" },
+        { op: "advanceTime", min: 6 }
+      ]
+    },
+    lockyard_salvage: {
+      at: "lockyard",
+      w: 2,
+      requirements: { flags: ["ch2_rust_opened"] },
+      text: ["你从废门轴里拆出一截弹簧。"],
+      ops: [
+        { op: "gainItem", item: "gear_spring", qty: 1 },
+        { op: "gainItem", item: "pump_rivet", qty: 1 },
+        { op: "advanceTime", min: 10 }
+      ]
+    },
+
     lower_works_guardian: {
       at: "lower_works",
       w: 0,
@@ -949,6 +1260,27 @@ export const DATA = {
       ]
     },
 
+    lower_works_paper_swarm: {
+      at: "lower_works",
+      w: 3,
+      requirements: { flags: ["ch2_rust_opened"] },
+      text: ["碎符纸贴着管道乱飞，像在找落点。"],
+      ops: [
+        { op: "startCombat", enemy: "paper_swarm" },
+        { op: "advanceTime", min: 6 }
+      ]
+    },
+    lower_works_heart_needle: {
+      at: "lower_works",
+      w: 2,
+      requirements: { flags: ["ch2_rust_opened"] },
+      text: ["一枚细长的黑影从雾里刺出。"],
+      ops: [
+        { op: "startCombat", enemy: "heart_needle" },
+        { op: "advanceTime", min: 6 }
+      ]
+    },
+
     ch3_mist_well_intro: {
       at: "mist_well",
       w: 0,
@@ -957,6 +1289,18 @@ export const DATA = {
       requirements: { flags: ["defeated_works_guardian"] },
       text: ["雾不再飘，它像水一样贴着墙。井口边散着碎纸符。"],
       ops: [{ op: "advanceTime", min: 6 }]
+    },
+
+    // Chapter 3 roaming encounters
+    mist_well_fog_skulker: {
+      at: "mist_well",
+      w: 3,
+      requirements: { flags: ["defeated_works_guardian"] },
+      text: ["井下的雾更黏，一个影子贴着墙走。"],
+      ops: [
+        { op: "startCombat", enemy: "fog_skulker" },
+        { op: "advanceTime", min: 6 }
+      ]
     },
 
     paper_atrium_imprint: {
@@ -996,6 +1340,38 @@ export const DATA = {
         ]
       },
       ops: []
+    },
+
+    paper_atrium_paper_swarm: {
+      at: "paper_atrium",
+      w: 3,
+      requirements: { flags: ["defeated_works_guardian"] },
+      text: ["符纸像群鸟一样扑来。"],
+      ops: [
+        { op: "startCombat", enemy: "paper_swarm" },
+        { op: "advanceTime", min: 6 }
+      ]
+    },
+    paper_atrium_heart_needle: {
+      at: "paper_atrium",
+      w: 2,
+      requirements: { flags: ["defeated_works_guardian"] },
+      text: ["黑影从符纸之间穿过，像一根针。"],
+      ops: [
+        { op: "startCombat", enemy: "heart_needle" },
+        { op: "advanceTime", min: 6 }
+      ]
+    },
+    paper_atrium_collect: {
+      at: "paper_atrium",
+      w: 2,
+      requirements: { flags: ["defeated_works_guardian"] },
+      text: ["你捡起一撮纸灰，指尖沾上墨。"],
+      ops: [
+        { op: "gainItem", item: "paper_ash", qty: 1 },
+        { op: "gainItem", item: "ink_resin", qty: 1 },
+        { op: "advanceTime", min: 10 }
+      ]
     },
 
     blacklight_heart_boss: {
@@ -1537,6 +1913,165 @@ export const DATA = {
             gives: { item: "master_blade", qty: 1 },
             cost: 10
           },
+          upgrade_repeating_crossbow: {
+            name: "升级连弩",
+            requires: { items: { repeating_crossbow: 1, gear_spring: 2, pump_rivet: 1 } },
+            gives: { item: "repeating_crossbow_mk2", qty: 1 },
+            cost: 12,
+            description: "更稳的齿轮组，降低出手波动"
+          },
+          upgrade_scrap_pistol: {
+            name: "校准手枪",
+            requires: { items: { scrap_pistol: 1, gear_spring: 2, oil_slick: 1 } },
+            gives: { item: "scrap_pistol_calibrated", qty: 1 },
+            cost: 10
+          },
+          upgrade_runic_staff: {
+            name: "刻符法杖",
+            requires: { items: { runic_staff: 1, mana_crystal: 2, ink_resin: 1 } },
+            gives: { item: "runic_staff_etched", qty: 1 },
+            cost: 10
+          },
+          upgrade_plate_armor: {
+            name: "加固板甲",
+            requires: { items: { plate_armor: 1, pump_rivet: 2, iron_ingot: 1 } },
+            gives: { item: "plate_armor_riveted", qty: 1 },
+            cost: 10
+          },
+          upgrade_warding_robe: {
+            name: "衬里长袍",
+            requires: { items: { warding_robe: 1, paper_ash: 2, spirit_stone: 1 } },
+            gives: { item: "warding_robe_lined", qty: 1 },
+            cost: 10
+          },
+          upgrade_fogback_mail: {
+            name: "加固驿站链甲",
+            requires: { items: { fogback_waystation_mail: 1, pump_rivet: 1, iron_ingot: 1 } },
+            gives: { item: "fogback_waystation_mail_reinforced", qty: 1 },
+            cost: 8
+          },
+          upgrade_fogback_robe: {
+            name: "铭刻驿站长袍",
+            requires: { items: { fogback_waystation_robe: 1, ink_resin: 1, mana_crystal: 1 } },
+            gives: { item: "fogback_waystation_robe_inscribed", qty: 1 },
+            cost: 8
+          },
+          upgrade_fogback_harness: {
+            name: "超频驿站束具",
+            requires: { items: { fogback_waystation_harness: 1, gear_spring: 2, scrap_metal: 2 } },
+            gives: { item: "fogback_waystation_harness_overclocked", qty: 1 },
+            cost: 8
+          },
+
+          // Skill upgrades (tiers)
+          upgrade_skill_purify_t1: {
+            name: "精修破邪斩 I",
+            requires: { flags: ["skills_learned_purify", "defeated_works_guardian"], items: { spirit_stone: 1, pump_rivet: 1 } },
+            gives: { skillUpgrade: { skill: "purify", toTier: 1 } },
+            cost: 12
+          },
+          upgrade_skill_purify_t2: {
+            name: "精修破邪斩 II",
+            requires: { flags: ["skills_learned_purify", "skill_upgraded_purify_t1", "defeated_heart_pump_guardian"], items: { heart_coil: 1, spirit_stone: 1 } },
+            gives: { skillUpgrade: { skill: "purify", toTier: 2 } },
+            cost: 15
+          },
+          upgrade_skill_sweep_t1: {
+            name: "打磨横扫 I",
+            requires: { flags: ["skills_learned_sweep", "defeated_works_guardian"], items: { iron_ingot: 1, monster_fang: 1 } },
+            gives: { skillUpgrade: { skill: "sweep", toTier: 1 } },
+            cost: 10
+          },
+          upgrade_skill_sweep_t2: {
+            name: "打磨横扫 II",
+            requires: { flags: ["skills_learned_sweep", "skill_upgraded_sweep_t1", "defeated_heart_pump_guardian"], items: { heart_coil: 1, iron_ingot: 1 } },
+            gives: { skillUpgrade: { skill: "sweep", toTier: 2 } },
+            cost: 12
+          },
+          upgrade_skill_fireball_t1: {
+            name: "淬炼火球术 I",
+            requires: { flags: ["skills_learned_fireball", "defeated_works_guardian"], items: { mana_crystal: 2, ink_resin: 1 } },
+            gives: { skillUpgrade: { skill: "fireball", toTier: 1 } },
+            cost: 12
+          },
+          upgrade_skill_fireball_t2: {
+            name: "淬炼火球术 II",
+            requires: { flags: ["skills_learned_fireball", "skill_upgraded_fireball_t1", "defeated_heart_pump_guardian"], items: { heart_coil: 1, mana_crystal: 2 } },
+            gives: { skillUpgrade: { skill: "fireball", toTier: 2 } },
+            cost: 15
+          },
+          upgrade_skill_heal_light_t1: {
+            name: "稳固微光治愈 I",
+            requires: { flags: ["skills_learned_heal_light", "defeated_works_guardian"], items: { mystic_herb: 1, paper_ash: 2 } },
+            gives: { skillUpgrade: { skill: "heal_light", toTier: 1 } },
+            cost: 10
+          },
+          upgrade_skill_heal_light_t2: {
+            name: "稳固微光治愈 II",
+            requires: { flags: ["skills_learned_heal_light", "skill_upgraded_heal_light_t1", "defeated_heart_pump_guardian"], items: { heart_coil: 1, mystic_herb: 1 } },
+            gives: { skillUpgrade: { skill: "heal_light", toTier: 2 } },
+            cost: 12
+          },
+          upgrade_skill_mana_shield_t1: {
+            name: "加厚魔法盾 I",
+            requires: { flags: ["skills_learned_mana_shield", "defeated_works_guardian"], items: { mana_crystal: 2, spirit_stone: 1 } },
+            gives: { skillUpgrade: { skill: "mana_shield", toTier: 1 } },
+            cost: 12
+          },
+          upgrade_skill_mana_shield_t2: {
+            name: "加厚魔法盾 II",
+            requires: { flags: ["skills_learned_mana_shield", "skill_upgraded_mana_shield_t1", "defeated_heart_pump_guardian"], items: { heart_coil: 1, spirit_stone: 1 } },
+            gives: { skillUpgrade: { skill: "mana_shield", toTier: 2 } },
+            cost: 15
+          },
+          upgrade_skill_stealth_t1: {
+            name: "磨亮隐身 I",
+            requires: { flags: ["skills_learned_stealth", "defeated_works_guardian"], items: { fog_fiber: 3, ink_resin: 1 } },
+            gives: { skillUpgrade: { skill: "stealth", toTier: 1 } },
+            cost: 10
+          },
+          upgrade_skill_stealth_t2: {
+            name: "磨亮隐身 II",
+            requires: { flags: ["skills_learned_stealth", "skill_upgraded_stealth_t1", "defeated_heart_pump_guardian"], items: { heart_coil: 1, fog_fiber: 3 } },
+            gives: { skillUpgrade: { skill: "stealth", toTier: 2 } },
+            cost: 12
+          },
+          upgrade_skill_power_strike_t1: {
+            name: "重铸强力击 I",
+            requires: { flags: ["skills_learned_power_strike", "defeated_works_guardian"], items: { iron_ingot: 1, pump_rivet: 1 } },
+            gives: { skillUpgrade: { skill: "power_strike", toTier: 1 } },
+            cost: 10
+          },
+          upgrade_skill_power_strike_t2: {
+            name: "重铸强力击 II",
+            requires: { flags: ["skills_learned_power_strike", "skill_upgraded_power_strike_t1", "defeated_heart_pump_guardian"], items: { heart_coil: 1, iron_ingot: 1 } },
+            gives: { skillUpgrade: { skill: "power_strike", toTier: 2 } },
+            cost: 12
+          },
+          upgrade_skill_deploy_turret_t1: {
+            name: "校准炮塔 I",
+            requires: { flags: ["skills_learned_deploy_turret", "defeated_works_guardian"], items: { gear_spring: 2, scrap_metal: 2 } },
+            gives: { skillUpgrade: { skill: "deploy_turret", toTier: 1 } },
+            cost: 10
+          },
+          upgrade_skill_deploy_turret_t2: {
+            name: "校准炮塔 II",
+            requires: { flags: ["skills_learned_deploy_turret", "skill_upgraded_deploy_turret_t1", "defeated_heart_pump_guardian"], items: { heart_coil: 1, gear_spring: 2 } },
+            gives: { skillUpgrade: { skill: "deploy_turret", toTier: 2 } },
+            cost: 12
+          },
+          upgrade_skill_shock_swarm_t1: {
+            name: "调频蜂群 I",
+            requires: { flags: ["skills_learned_shock_swarm", "defeated_works_guardian"], items: { gear_spring: 2, oil_slick: 1 } },
+            gives: { skillUpgrade: { skill: "shock_swarm", toTier: 1 } },
+            cost: 10
+          },
+          upgrade_skill_shock_swarm_t2: {
+            name: "调频蜂群 II",
+            requires: { flags: ["skills_learned_shock_swarm", "skill_upgraded_shock_swarm_t1", "defeated_heart_pump_guardian"], items: { heart_coil: 1, gear_spring: 2 } },
+            gives: { skillUpgrade: { skill: "shock_swarm", toTier: 2 } },
+            cost: 12
+          },
           refine_iron: {
             name: "提炼铁锭",
             requires: { items: { iron_ore: 3 } },
@@ -1795,6 +2330,72 @@ export const DATA = {
       duration: 4,
       cooldown: 3,
       enCost: 3
+    }
+  },
+
+  skillUpgrades: {
+    purify: {
+      maxTier: 2,
+      tiers: {
+        1: { dmgBase: 2 },
+        2: { dmgBase: 2 }
+      }
+    },
+    sweep: {
+      maxTier: 2,
+      tiers: {
+        1: { damage_percent: 10 },
+        2: { damage_percent: 10 }
+      }
+    },
+    heal_light: {
+      maxTier: 2,
+      tiers: {
+        1: { heal_amount: 5 },
+        2: { heal_amount: 5 }
+      }
+    },
+    stealth: {
+      maxTier: 2,
+      tiers: {
+        1: { evadeChance: 0.05 },
+        2: { evadeChance: 0.05 }
+      }
+    },
+    power_strike: {
+      maxTier: 2,
+      tiers: {
+        1: { mult: 0.2 },
+        2: { mult: 0.2 }
+      }
+    },
+    fireball: {
+      maxTier: 2,
+      tiers: {
+        1: { mp_scale: 0.1 },
+        2: { base_damage: 1 }
+      }
+    },
+    mana_shield: {
+      maxTier: 2,
+      tiers: {
+        1: { shield_ratio: 0.05 },
+        2: { shield_ratio: 0.05 }
+      }
+    },
+    deploy_turret: {
+      maxTier: 2,
+      tiers: {
+        1: { atk_scale: 0.05 },
+        2: { duration: 1 }
+      }
+    },
+    shock_swarm: {
+      maxTier: 2,
+      tiers: {
+        1: { atk_scale: 0.04 },
+        2: { duration: 1 }
+      }
     }
   }
 };

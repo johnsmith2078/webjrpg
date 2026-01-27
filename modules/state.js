@@ -33,6 +33,8 @@ export function createInitialState(seedInput) {
     inventory: {},
     flags: {},
 
+    skillUpgrades: {},
+
     seenEvents: {},
 
     prompt: null,

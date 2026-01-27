@@ -2,6 +2,7 @@ import { DATA } from "./data.js";
 import { recordItemGain } from "./quests.js";
 import { hasAllFlags, nowId } from "./utils.js";
 import { derivePlayerStats } from "./stats.js";
+import { consumeItemsWithUnequip, autoEquipFromGiven } from "./upgrades.js";
 
 function hasEnoughGold(state, amt) {
   const n = Number(state.player && state.player.gold ? state.player.gold : 0);
@@ -107,13 +108,11 @@ export function applyOps(state, rng, ops, lines) {
           lines.push({ id: nowId(), type: "system", text: `花费 ${service.cost} 钱。` });
         }
       }
-      // Consume input items
-      if (service.requires && service.requires.items) {
-        for (const [itemId, qty] of Object.entries(service.requires.items)) {
-          state.inventory[itemId] = Number(state.inventory[itemId] || 0) - Number(qty);
-          if (state.inventory[itemId] <= 0) delete state.inventory[itemId];
-        }
-      }
+      const unequippedSlots = service.requires && service.requires.items
+        ? consumeItemsWithUnequip(state, service.requires.items, lines)
+        : new Set();
+
+      const givenIds = [];
       // Give output items
       if (service.gives) {
         if (service.gives.item) {
@@ -122,6 +121,7 @@ export function applyOps(state, rng, ops, lines) {
           recordItemGain(state, service.gives.item, qty);
           const name = DATA.items[service.gives.item]?.name || service.gives.item;
           lines.push({ id: nowId(), type: "system", text: `获得：${name} x${qty}` });
+          givenIds.push(service.gives.item);
         }
         if (service.gives.items) {
           for (const [itemId, qty] of Object.entries(service.gives.items)) {
@@ -129,6 +129,7 @@ export function applyOps(state, rng, ops, lines) {
             recordItemGain(state, itemId, qty);
             const name = DATA.items[itemId]?.name || itemId;
             lines.push({ id: nowId(), type: "system", text: `获得：${name} x${qty}` });
+            givenIds.push(itemId);
           }
         }
         if (service.gives.gold) {
@@ -140,6 +141,34 @@ export function applyOps(state, rng, ops, lines) {
           const skillName = DATA.skills[service.gives.skill]?.name || service.gives.skill;
           lines.push({ id: nowId(), type: "system", text: `学会了：${skillName}` });
         }
+        if (service.gives.skillUpgrade && typeof service.gives.skillUpgrade === "object") {
+          const skill = String(service.gives.skillUpgrade.skill || "");
+          const toTier = Number(service.gives.skillUpgrade.toTier || 0);
+          if (!skill || toTier <= 0) {
+            lines.push({ id: nowId(), type: "system", text: "技能升级信息无效。" });
+          } else {
+            if (!state.skillUpgrades || typeof state.skillUpgrades !== "object") state.skillUpgrades = {};
+            const cfg = DATA.skillUpgrades && DATA.skillUpgrades[skill] ? DATA.skillUpgrades[skill] : null;
+            const maxTier = cfg ? Number(cfg.maxTier || 0) : 0;
+            const cap = maxTier > 0 ? maxTier : toTier;
+            const cur = Number(state.skillUpgrades[skill] || 0);
+            const next = Math.min(cap, Math.max(cur, toTier));
+            state.skillUpgrades[skill] = next;
+
+            // Convenience flags for gating UI/services.
+            for (let t = 1; t <= next; t++) {
+              state.flags[`skill_upgraded_${skill}_t${t}`] = true;
+            }
+
+            const skillName = DATA.skills[skill]?.name || skill;
+            lines.push({ id: nowId(), type: "rare", text: `技能升级：${skillName} T${cur} -> T${next}` });
+          }
+        }
+      }
+
+      if (givenIds.length > 0) {
+        if (unequippedSlots.has("weapon")) autoEquipFromGiven(state, givenIds, "weapon", lines);
+        if (unequippedSlots.has("armor")) autoEquipFromGiven(state, givenIds, "armor", lines);
       }
       // Log service name
       if (service.name) {

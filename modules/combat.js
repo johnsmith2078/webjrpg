@@ -14,6 +14,28 @@ function getCritMultiplier(combat) {
   return combat && combat.statusEffects && combat.statusEffects.crit_boost > 0 ? 2 : 1;
 }
 
+function getSkillTier(state, skillId) {
+  if (!state || !skillId) return 0;
+  const raw = state.skillUpgrades && typeof state.skillUpgrades === "object" ? Number(state.skillUpgrades[skillId] || 0) : 0;
+  const cfg = DATA.skillUpgrades && DATA.skillUpgrades[skillId] ? DATA.skillUpgrades[skillId] : null;
+  const maxTier = cfg ? Number(cfg.maxTier || 0) : 0;
+  if (maxTier <= 0) return 0;
+  return clamp(raw, 0, maxTier);
+}
+
+function sumSkillUpgrade(state, skillId, key) {
+  const cfg = DATA.skillUpgrades && DATA.skillUpgrades[skillId] ? DATA.skillUpgrades[skillId] : null;
+  if (!cfg || !cfg.tiers || typeof cfg.tiers !== "object") return 0;
+  const tier = getSkillTier(state, skillId);
+  let out = 0;
+  for (let t = 1; t <= tier; t++) {
+    const delta = cfg.tiers[t] && typeof cfg.tiers[t] === "object" ? cfg.tiers[t] : null;
+    if (!delta) continue;
+    out += Number(delta[key] || 0);
+  }
+  return out;
+}
+
 export function startCombat(state, enemyId) {
   const e = DATA.enemies[enemyId];
   state.combat = {
@@ -21,11 +43,16 @@ export function startCombat(state, enemyId) {
     enemyHp: e.hp,
     defending: false,
     enemyStun: 0,
+    enemyTurn: 0,
+    enemyCharge: 0,
+    enemyBroken: 0,
     usedPurify: false,
     skillCooldowns: {},
     enemyAtkDown: 0,
+    enemyAtkBonus: 0,
     swarmDamage: 0,
     turretDamage: 0,
+    enraged: false,
     statusEffects: {
       focus: 0,
       ward: 0,
@@ -78,6 +105,39 @@ export function resolveCombatAction(state, rng, action) {
   const enemyName = e.name || c.enemyId;
   const log = [];
 
+  if (c.enemyTurn === undefined) c.enemyTurn = 0;
+  if (c.enemyCharge === undefined) c.enemyCharge = 0;
+  if (c.enemyBroken === undefined) c.enemyBroken = 0;
+  let brokeLog = false;
+
+  const heavyCfg = e && e.heavyAttack && typeof e.heavyAttack === "object" && e.heavyAttack.enabled ? e.heavyAttack : null;
+  const breakMult = heavyCfg ? Number(heavyCfg.breakMult || 1) : 1;
+  const applyBreakDamage = (dmg) => {
+    const n = Number(dmg || 0);
+    if (!heavyCfg) return n;
+    if (Number(c.enemyBroken || 0) <= 0) return n;
+    const out = Math.max(0, Math.floor(n * breakMult));
+    if (!brokeLog) {
+      brokeLog = true;
+      log.push({ id: nowId(), type: "rare", text: "破绽！" });
+    }
+    return out;
+  };
+
+  if (c.enemyAtkBonus === undefined) c.enemyAtkBonus = 0;
+  if (c.enraged === undefined) c.enraged = false;
+
+  // Chapter 2/3 bosses: deterministic late-fight enrage (no extra RNG).
+  if (!c.enraged && (c.enemyId === "works_guardian" || c.enemyId === "heart_pump_guardian")) {
+    const maxHp = Number(e.hp || 0);
+    const threshold = Math.max(1, Math.floor(maxHp * 0.25));
+    if (Number(c.enemyHp || 0) <= threshold) {
+      c.enraged = true;
+      c.enemyAtkBonus = Math.max(Number(c.enemyAtkBonus || 0), 1);
+      log.push({ id: nowId(), type: "rare", text: "泵机尖鸣，金属关节开始发热。" });
+    }
+  }
+
   const derived = derivePlayerStats(state);
   const effAtk = Number(derived.atk || 0);
   const effDef = Number(derived.def || 0);
@@ -94,6 +154,10 @@ export function resolveCombatAction(state, rng, action) {
       c.statusEffects[effect] = duration - 1;
     }
   }
+
+  if (Number(c.enemyBroken || 0) > 0) {
+    c.enemyBroken = Math.max(0, Number(c.enemyBroken || 0) - 1);
+  }
   
   for (const [skill, cooldown] of Object.entries(c.skillCooldowns)) {
     if (cooldown > 0) {
@@ -107,7 +171,8 @@ export function resolveCombatAction(state, rng, action) {
       weaponBonus += Number(weaponCombat.damageBonusVs[c.enemyId] || 0);
     }
     const isCrit = c.statusEffects.crit_boost > 0;
-    const dmg = damage(effAtk, e.def, rng, weaponBonus, getCritMultiplier(c));
+    let dmg = damage(effAtk, e.def, rng, weaponBonus, getCritMultiplier(c));
+    dmg = applyBreakDamage(dmg);
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     
     if (isCrit) {
@@ -120,7 +185,7 @@ export function resolveCombatAction(state, rng, action) {
     log.push({ id: nowId(), type: "system", text: "你稳住呼吸，摆出防御姿态。" });
   } else if (a.startsWith("skill:")) {
     const skillId = a.slice("skill:".length);
-    const skillResult = handleSkill(state, skillId, rng, log);
+    const skillResult = handleSkill(state, skillId, rng, log, applyBreakDamage);
     if (skillResult && skillResult.ended !== undefined) {
       return skillResult;
     }
@@ -139,11 +204,19 @@ export function resolveCombatAction(state, rng, action) {
       const charmDmg = 1 + rng.nextInt(0, 2);
       c.enemyHp = clamp(c.enemyHp - charmDmg, 0, 9999);
       log.push({ id: nowId(), type: "rare", text: `你掷出「${item.name}」。符火灼伤 ${charmDmg} 点，敌人动作一滞。` });
+
+      if (itemId === "bound_charm" && heavyCfg && Number(c.enemyCharge || 0) > 0) {
+        c.enemyCharge = 0;
+        const turns = Math.max(1, Number(heavyCfg.breakTurns || 2));
+        c.enemyBroken = Math.max(Number(c.enemyBroken || 0), turns + 1);
+        log.push({ id: nowId(), type: "rare", text: String(heavyCfg.breakText || "你打断了蓄力，敌人露出破绽。") });
+      }
     } else if (item && item.combat && item.combat.type === "explosive") {
       state.inventory[itemId] = qty - 1;
       if (state.inventory[itemId] <= 0) delete state.inventory[itemId];
       const [min, max] = item.combat.damage;
-      const dmg = min + rng.nextInt(0, max - min);
+      let dmg = min + rng.nextInt(0, max - min);
+      dmg = applyBreakDamage(dmg);
       c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
       log.push({ id: nowId(), type: "rare", text: `爆炸陷阱！造成了 ${dmg} 点范围伤害。` });
     } else if (item && item.combat && item.combat.type === "ward") {
@@ -180,14 +253,16 @@ export function resolveCombatAction(state, rng, action) {
   }
 
   if (c.statusEffects.turret > 0 && c.enemyHp > 0) {
-    const tick = Math.max(1, Number(c.turretDamage || 1));
+    let tick = Math.max(1, Number(c.turretDamage || 1));
+    tick = applyBreakDamage(tick);
     c.enemyHp = clamp(c.enemyHp - tick, 0, 9999);
     c.statusEffects.turret = Math.max(0, c.statusEffects.turret - 1);
     log.push({ id: nowId(), type: "rare", text: `炮塔连射，造成 ${tick} 点伤害。` });
   }
 
   if (c.statusEffects.swarm > 0 && c.enemyHp > 0) {
-    const tick = Math.max(1, Number(c.swarmDamage || 1));
+    let tick = Math.max(1, Number(c.swarmDamage || 1));
+    tick = applyBreakDamage(tick);
     c.enemyHp = clamp(c.enemyHp - tick, 0, 9999);
     c.statusEffects.swarm = Math.max(0, c.statusEffects.swarm - 1);
     log.push({ id: nowId(), type: "rare", text: `电弧蜂群撕咬，造成 ${tick} 点伤害。` });
@@ -210,8 +285,32 @@ export function resolveCombatAction(state, rng, action) {
     return { ended: false };
   }
 
-  if (c.statusEffects.stealth > 0 && rng.nextFloat() < 0.8) {
+  let chargedThisTurn = false;
+  if (heavyCfg && Number(c.enemyCharge || 0) > 0) {
+    chargedThisTurn = true;
+  } else if (heavyCfg) {
+    const baseInterval = Number(heavyCfg.interval || 0);
+    const enrageInterval = Number(heavyCfg.intervalEnraged || 0);
+    const interval = c.enraged && enrageInterval > 0 ? enrageInterval : baseInterval;
+    if (interval > 0 && ((Number(c.enemyTurn || 0) + 1) % interval === 0)) {
+      c.enemyCharge = 1;
+      log.push({ id: nowId(), type: "rare", text: String(heavyCfg.telegraphText || "它开始蓄力。") });
+      // Preserve RNG stream shape: consume the enemy damage roll.
+      rng.nextInt(0, 2);
+      c.enemyTurn = Number(c.enemyTurn || 0) + 1;
+      state.log.push(...log);
+      return { ended: false };
+    }
+  }
+
+  const stealthChance = Math.min(0.95, Math.max(0, 0.8 + sumSkillUpgrade(state, "stealth", "evadeChance")));
+  if (c.statusEffects.stealth > 0 && rng.nextFloat() < stealthChance) {
+    if (chargedThisTurn) {
+      c.enemyCharge = 0;
+      log.push({ id: nowId(), type: "rare", text: "你避开了蓄力重击的落点。" });
+    }
     log.push({ id: nowId(), type: "system", text: `你巧妙地避开了「${enemyName}」的攻击。` });
+    c.enemyTurn = Number(c.enemyTurn || 0) + 1;
     state.log.push(...log);
     return { ended: false };
   }
@@ -219,6 +318,8 @@ export function resolveCombatAction(state, rng, action) {
   const traits = e.traits || [];
   if (traits.includes("evasion") && rng.nextFloat() < 0.3) {
     log.push({ id: nowId(), type: "system", text: `「${enemyName}」灵巧地闪避了。` });
+    if (chargedThisTurn) c.enemyCharge = 0;
+    c.enemyTurn = Number(c.enemyTurn || 0) + 1;
     state.log.push(...log);
     return { ended: false };
   }
@@ -227,12 +328,29 @@ export function resolveCombatAction(state, rng, action) {
   const cursedPenalty = state.flags.cursed ? 1 : 0;
   const wardReduction = c.statusEffects.ward > 0 ? Math.floor(e.atk * 0.5) : 0;
   const atkDebuff = c.statusEffects.weaken > 0 ? Number(c.enemyAtkDown || 0) : 0;
-  const enemyAtk = Math.max(1, Number(e.atk || 0) - atkDebuff);
-  const enemyDmg = Math.max(1, damage(enemyAtk, effDef + bonusDef, rng, cursedPenalty) - wardReduction);
+  const enemyAtk = Math.max(1, Number(e.atk || 0) + Number(c.enemyAtkBonus || 0) - atkDebuff);
+  let enemyAtkEff = enemyAtk;
+  if (chargedThisTurn) {
+    const mult = Math.max(1, Number(heavyCfg.chargedMult || 1.8));
+    enemyAtkEff = Math.max(1, Math.floor(enemyAtkEff * mult));
+  }
+  let enemyDmg = Math.max(1, damage(enemyAtkEff, effDef + bonusDef, rng, cursedPenalty) - wardReduction);
+  if (chargedThisTurn) {
+    log.push({ id: nowId(), type: "rare", text: String(heavyCfg.chargedText || "蓄力重击落下！") });
+    if (c.defending) {
+      const mult = Math.min(1, Math.max(0.1, Number(heavyCfg.defendMult || 0.6)));
+      enemyDmg = Math.max(1, Math.floor(enemyDmg * mult));
+      const turns = Math.max(1, Number(heavyCfg.breakTurns || 2));
+      c.enemyBroken = Math.max(Number(c.enemyBroken || 0), turns + 1);
+      log.push({ id: nowId(), type: "rare", text: String(heavyCfg.defendBreakText || "你顶住重击，它露出破绽。") });
+    }
+    c.enemyCharge = 0;
+  }
   let hpDamage = enemyDmg;
   let mpAbsorb = 0;
   let absorbTarget = 0;
-  const shieldRatio = Math.min(1, Math.max(0, Number(DATA.skills.mana_shield?.shield_ratio || 0.8)));
+  const baseShieldRatio = Number(DATA.skills.mana_shield?.shield_ratio || 0.8);
+  const shieldRatio = Math.min(0.85, Math.max(0, baseShieldRatio + sumSkillUpgrade(state, "mana_shield", "shield_ratio")));
   const hasShield = c.statusEffects.mana_shield > 0 && Number(state.player.mp || 0) > 0 && shieldRatio > 0;
 
   if (hasShield) {
@@ -267,11 +385,12 @@ export function resolveCombatAction(state, rng, action) {
     return { ended: true, won: false, fled: false };
   }
 
+  c.enemyTurn = Number(c.enemyTurn || 0) + 1;
   state.log.push(...log);
   return { ended: false };
 }
 
-function handleSkill(state, skillId, rng, log) {
+function handleSkill(state, skillId, rng, log, applyBreakDamage) {
   const c = state.combat;
   if (!c) return;
 
@@ -312,8 +431,7 @@ function handleSkill(state, skillId, rng, log) {
       log.push({ id: nowId(), type: "system", text: "这一招已经用过了。" });
     } else {
       c.usedPurify = true;
-      const e = DATA.enemies[c.enemyId];
-      const base = 3;
+      const base = 3 + sumSkillUpgrade(state, "purify", "dmgBase");
       const bonus = (c.enemyId === "oni_wisp" || c.enemyId === "shrine_guardian") ? 5 : 0;
       let dmg = base + bonus + rng.nextInt(0, 2);
       
@@ -323,6 +441,7 @@ function handleSkill(state, skillId, rng, log) {
       }
       
       dmg = Math.floor(dmg * getCritMultiplier(c));
+      if (applyBreakDamage) dmg = applyBreakDamage(dmg);
       c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
       log.push({ id: nowId(), type: "rare", text: `破邪斩！你造成了 ${dmg} 点伤害。` });
       if (state.flags.cursed) {
@@ -337,12 +456,14 @@ function handleSkill(state, skillId, rng, log) {
   } else if (skillId === "sweep") {
     const e = DATA.enemies[c.enemyId];
     const derived = derivePlayerStats(state);
-    const baseDmg = Math.floor(Number(derived.atk || 0) * (skill.damage_percent / 100));
-    const dmg = damage(baseDmg, e.def, rng, 0, getCritMultiplier(c));
+    const pct = Number(skill.damage_percent || 0) + sumSkillUpgrade(state, "sweep", "damage_percent");
+    const baseDmg = Math.floor(Number(derived.atk || 0) * (pct / 100));
+    let dmg = damage(baseDmg, e.def, rng, 0, getCritMultiplier(c));
+    if (applyBreakDamage) dmg = applyBreakDamage(dmg);
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     log.push({ id: nowId(), type: "rare", text: `横扫！你造成了 ${dmg} 点范围伤害。` });
   } else if (skillId === "heal_light") {
-    let healAmt = skill.heal_amount;
+    let healAmt = Number(skill.heal_amount || 0) + sumSkillUpgrade(state, "heal_light", "heal_amount");
     const hasHerb = (state.inventory.mystic_herb || 0) > 0;
     
     if (hasHerb) {
@@ -365,8 +486,10 @@ function handleSkill(state, skillId, rng, log) {
   } else if (skillId === "power_strike") {
     const e = DATA.enemies[c.enemyId];
     const derived = derivePlayerStats(state);
-    const baseAtk = Math.floor(Number(derived.atk || 0) * 1.6);
-    const dmg = damage(baseAtk, e.def, rng, 0, getCritMultiplier(c));
+    const mult = 1.6 + sumSkillUpgrade(state, "power_strike", "mult");
+    const baseAtk = Math.floor(Number(derived.atk || 0) * mult);
+    let dmg = damage(baseAtk, e.def, rng, 0, getCritMultiplier(c));
+    if (applyBreakDamage) dmg = applyBreakDamage(dmg);
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     log.push({ id: nowId(), type: "rare", text: `强力击！你造成了 ${dmg} 点伤害。` });
   } else if (skillId === "war_cry") {
@@ -378,12 +501,13 @@ function handleSkill(state, skillId, rng, log) {
   } else if (skillId === "fireball") {
     const e = DATA.enemies[c.enemyId];
     const derived = derivePlayerStats(state);
-    const base = Number(skill.base_damage || 2);
-    const mpScale = Number(skill.mp_scale || 0);
+    const base = Number(skill.base_damage || 2) + sumSkillUpgrade(state, "fireball", "base_damage");
+    const mpScale = Number(skill.mp_scale || 0) + sumSkillUpgrade(state, "fireball", "mp_scale");
     const maxMp = Number(derived.maxMp || state.player.maxMp || 0);
     const mpBonus = Math.floor(maxMp * mpScale);
     const baseAtk = Math.max(0, base + mpBonus);
-    const dmg = Math.max(1, damage(baseAtk, e.def, rng, 0, getCritMultiplier(c)));
+    let dmg = Math.max(1, damage(baseAtk, e.def, rng, 0, getCritMultiplier(c)));
+    if (applyBreakDamage) dmg = applyBreakDamage(dmg);
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     log.push({ id: nowId(), type: "rare", text: `火球术！法力越盛，爆炎越猛（受护甲压制）。造成 ${dmg} 点魔法伤害。` });
   } else if (skillId === "mana_shield") {
@@ -392,18 +516,18 @@ function handleSkill(state, skillId, rng, log) {
   } else if (skillId === "deploy_turret") {
     const derived = derivePlayerStats(state);
     const base = Number(skill.tick_base || 1);
-    const scale = Number(skill.atk_scale || 0);
+    const scale = Number(skill.atk_scale || 0) + sumSkillUpgrade(state, "deploy_turret", "atk_scale");
     const tick = Math.max(1, Math.floor(base + Number(derived.atk || 0) * scale));
-    const duration = Number(skill.duration || 2);
+    const duration = Number(skill.duration || 2) + sumSkillUpgrade(state, "deploy_turret", "duration");
     c.statusEffects.turret = Math.max(Number(c.statusEffects.turret || 0), duration);
     c.turretDamage = Math.max(Number(c.turretDamage || 0), tick);
     log.push({ id: nowId(), type: "rare", text: `炮塔启动，持续射击（每回合 ${tick} 点伤害）。` });
   } else if (skillId === "shock_swarm") {
     const derived = derivePlayerStats(state);
     const base = Number(skill.tick_base || 1);
-    const scale = Number(skill.atk_scale || 0);
+    const scale = Number(skill.atk_scale || 0) + sumSkillUpgrade(state, "shock_swarm", "atk_scale");
     const tick = Math.max(1, Math.floor(base + Number(derived.atk || 0) * scale));
-    const duration = Number(skill.duration || 2);
+    const duration = Number(skill.duration || 2) + sumSkillUpgrade(state, "shock_swarm", "duration");
     c.statusEffects.swarm = Math.max(c.statusEffects.swarm, duration);
     c.swarmDamage = Math.max(Number(c.swarmDamage || 0), tick);
     log.push({ id: nowId(), type: "rare", text: `你释放电弧蜂群，缠绕着敌人（每回合 ${tick} 点伤害）。` });

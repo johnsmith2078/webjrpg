@@ -741,6 +741,14 @@ export function createGame({ state }) {
           if (service?.gives?.skill && s.flags[`skills_learned_${service.gives.skill}`]) {
             continue;
           }
+          if (service?.gives?.skillUpgrade && typeof service.gives.skillUpgrade === "object") {
+            const skill = String(service.gives.skillUpgrade.skill || "");
+            const toTier = Number(service.gives.skillUpgrade.toTier || 0);
+            const cur = Number(s.skillUpgrades && typeof s.skillUpgrades === "object" ? s.skillUpgrades[skill] || 0 : 0);
+            if (skill && toTier > 0 && cur >= toTier) {
+              continue;
+            }
+          }
           const canUse = checkRequirements(s, service.requires || {}).ok;
           const costText = service.cost > 0 ? "（" + service.cost + "金币）" : "";
           const desc = service.description || "";

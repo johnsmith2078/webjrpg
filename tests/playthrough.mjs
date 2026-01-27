@@ -176,6 +176,13 @@ function resolveCombat(game) {
       // Boss fights are tuned to assume some resource usage; keep the test stable by spending defensively here.
       const useConsumables = isBoss && !cs.flags.class_mage;
 
+      // Boss charge/break mechanic: if boss is charging, prefer to interrupt with bound_charm; otherwise defend.
+      if (cs.combat && cs.combat.enemyCharge > 0 && (cs.inventory.bound_charm || 0) > 0 && !cs.combat.enemyStun) {
+        game.handleChoice("use:bound_charm");
+      } else if (cs.combat && cs.combat.enemyCharge > 0) {
+        game.handleChoice("defend");
+      } else
+
       if (cs.combat && enemyId === "shrine_guardian" && (cs.inventory.bound_charm || 0) > 0) {
         game.handleChoice("use:bound_charm");
       } else if (
