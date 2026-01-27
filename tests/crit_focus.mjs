@@ -33,38 +33,38 @@ function dealDamage(state, rng, action) {
   return before - state.combat.enemyHp;
 }
 
-function testFocusSkillCrit() {
+function testFocusSkillDamageBoost() {
   const state = setupState();
   const rng = makeRng();
 
   resolveCombatAction(state, rng, "skill:focus");
   const dmg = dealDamage(state, rng, "attack");
-  assert(dmg === 20, `凝神暴击应造成 20 伤害，实际 ${dmg}`);
+  assert(dmg === 13, `凝神(35%)应造成 13 伤害，实际 ${dmg}`);
 }
 
-function testFocusTeaCrit() {
+function testFocusTeaDamageBoost() {
   const state = setupState();
   const rng = makeRng();
 
   state.inventory.focus_tea = 1;
   resolveCombatAction(state, rng, "use:focus_tea");
   const dmg = dealDamage(state, rng, "attack");
-  assert(dmg === 20, `凝神茶暴击应造成 20 伤害，实际 ${dmg}`);
+  assert(dmg === 15, `凝神茶(50%)应造成 15 伤害，实际 ${dmg}`);
 }
 
-function testFocusPowerStrikeCrit() {
+function testFocusPowerStrikeDamageBoost() {
   const state = setupState();
   const rng = makeRng();
 
   resolveCombatAction(state, rng, "skill:focus");
   const dmg = dealDamage(state, rng, "skill:power_strike");
-  assert(dmg === 32, `凝神叠加强力击应造成 32 伤害，实际 ${dmg}`);
+  assert(dmg === 21, `凝神叠加强力击应造成 21 伤害，实际 ${dmg}`);
 }
 
 try {
-  testFocusSkillCrit();
-  testFocusTeaCrit();
-  testFocusPowerStrikeCrit();
+  testFocusSkillDamageBoost();
+  testFocusTeaDamageBoost();
+  testFocusPowerStrikeDamageBoost();
   console.log("PASS: crit_focus");
 } catch (e) {
   console.error("FAIL: crit_focus", e && e.stack ? e.stack : e);

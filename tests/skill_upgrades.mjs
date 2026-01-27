@@ -41,7 +41,7 @@ function testFireballUpgradeTier1IncreasesDamage() {
   up.player.gold = 999;
   up.inventory.mana_crystal = 2;
   up.inventory.ink_resin = 1;
-  applyOps(up, {}, [{ op: "npcService", npc: "blacksmith", service: "upgrade_skill_fireball_t1" }], []);
+  applyOps(up, {}, [{ op: "npcService", npc: "works_machinist", service: "upgrade_skill_fireball_t1" }], []);
   assert(Number(up.skillUpgrades.fireball || 0) >= 1, "应获得 fireball T1 升级");
   const dmg1 = fireballDamage(up, rng);
 

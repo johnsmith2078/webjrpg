@@ -36,32 +36,34 @@ function testEvasionDodgesPlayerAttack() {
   assert(s.combat.enemyHp === before, "闪避应让本次攻击落空 (敌人HP不变)");
 }
 
-function testFocusMakesSureHit() {
+function testFocusDoesNotBypassEvasion() {
   const rng = makeRng();
   const s = setup("wolf");
   s.flags.skills_learned_focus = true;
-  s.combat.enemyEvasionReady = 1;
   resolveCombatAction(s, rng, "skill:focus");
+  // Force: next physical attack should be dodged (after the enemy turn re-roll).
+  s.combat.enemyEvasionReady = 1;
   const before = s.combat.enemyHp;
   resolveCombatAction(s, rng, "attack");
-  assert(s.combat.enemyHp < before, "凝神后应必中 (敌人HP应下降)");
+  assert(s.combat.enemyHp === before, "凝神不应提供必中 (闪避准备时仍应落空)");
 }
 
-function testFocusTeaMakesSureHit() {
+function testFocusTeaDoesNotBypassEvasion() {
   const rng = makeRng();
   const s = setup("wolf");
   s.inventory.focus_tea = 1;
-  s.combat.enemyEvasionReady = 1;
   resolveCombatAction(s, rng, "use:focus_tea");
+  // Force: next physical attack should be dodged (after the enemy turn re-roll).
+  s.combat.enemyEvasionReady = 1;
   const before = s.combat.enemyHp;
   resolveCombatAction(s, rng, "attack");
-  assert(s.combat.enemyHp < before, "凝神茶后应必中 (敌人HP应下降)");
+  assert(s.combat.enemyHp === before, "凝神茶不应提供必中 (闪避准备时仍应落空)");
 }
 
 function main() {
   testEvasionDodgesPlayerAttack();
-  testFocusMakesSureHit();
-  testFocusTeaMakesSureHit();
+  testFocusDoesNotBypassEvasion();
+  testFocusTeaDoesNotBypassEvasion();
   console.log("PASS: evasion_focus");
 }
 

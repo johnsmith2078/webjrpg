@@ -199,12 +199,18 @@ function resolveCombat(game) {
         game.handleChoice("use:bound_charm");
       } else
 
-      // Evasion enemies: use focus to ensure hit if available.
+      // Evasion enemies: if the next attack will be dodged, defend to reduce incoming damage.
+      if (cs.combat && enemyId && evasionEnemies.has(enemyId) && (cs.combat.enemyEvasionReady || 0) > 0) {
+        game.handleChoice("defend");
+      } else
+
+      // Evasion enemies: focus no longer guarantees hit; only use it when the next attack is not forced to miss.
       if (
         cs.combat &&
         enemyId &&
         evasionEnemies.has(enemyId) &&
-        (!cs.combat.statusEffects || !cs.combat.statusEffects.crit_boost) &&
+        (!cs.combat.statusEffects || !cs.combat.statusEffects.damage_boost) &&
+        (cs.combat.enemyEvasionReady || 0) <= 0 &&
         cs.flags.skills_learned_focus &&
         (cs.player?.sp || 0) >= 1 &&
         (!cs.combat.skillCooldowns || !cs.combat.skillCooldowns.focus)
@@ -214,7 +220,8 @@ function resolveCombat(game) {
         cs.combat &&
         enemyId &&
         evasionEnemies.has(enemyId) &&
-        (!cs.combat.statusEffects || !cs.combat.statusEffects.crit_boost) &&
+        (!cs.combat.statusEffects || !cs.combat.statusEffects.damage_boost) &&
+        (cs.combat.enemyEvasionReady || 0) <= 0 &&
         (cs.inventory.focus_tea || 0) > 0
       ) {
         game.handleChoice("use:focus_tea");
@@ -233,7 +240,7 @@ function resolveCombat(game) {
         cs.combat &&
         useConsumables &&
         (cs.inventory.focus_tea || 0) > 0 &&
-        (!cs.combat.statusEffects || !cs.combat.statusEffects.crit_boost)
+        (!cs.combat.statusEffects || !cs.combat.statusEffects.damage_boost)
       ) {
         game.handleChoice("use:focus_tea");
       } else if (
@@ -460,6 +467,24 @@ export function runPlaythrough(opts = {}) {
     120,
     "获得纸符"
   );
+
+  // Focus nerf can make early combats longer; ensure we still have 1 herbs for bind_charm.
+  if (countItem(game.getState(), "herbs") < 1) {
+    travelTo(game, "forest_path");
+    doUntil(
+      game,
+      () => countItem(game.getState(), "herbs") >= 1,
+      () => {
+        game.handleChoice("explore");
+        resolvePromptIfAny(game);
+        resolveCombat(game);
+      },
+      120,
+      "补齐苦草"
+    );
+    travelTo(game, "old_shrine");
+    assert(game.getState().location === "old_shrine", "应回到 old_shrine");
+  }
 
   // 5) 制作“缚符”（回归测试：这里不能崩）
   const beforeCharm = countItem(game.getState(), "paper_charm");
@@ -913,6 +938,7 @@ export function runPlaythrough(opts = {}) {
     resolvePromptIfAny(game);
     resolveCombat(game);
     assert(game.getState().flags.ch2_rust_opened, "驿站事件后应设置 ch2_rust_opened");
+    assert(game.choices().some((c) => c.id === "talk"), "驿站应出现交谈（NPC）");
     const stAfterWaystation = game.getState();
     const gotWaystationKit =
       countItem(stAfterWaystation, "fogback_waystation_mail") > 0 ||
@@ -931,8 +957,14 @@ export function runPlaythrough(opts = {}) {
     }
 
     travelTo(game, "rust_channel");
+    // New Chapter 2 gate: rust_channel objective must be completed.
+    game.handleChoice("explore");
+    resolvePromptIfAny(game);
+    resolveCombat(game);
+    assert(game.getState().flags.ch2_rust_scouted, "锈水渠事件后应设置 ch2_rust_scouted");
     travelTo(game, "lockyard");
     assert(game.getState().location === "lockyard", "应到达 lockyard");
+    assert(game.choices().some((c) => c.id === "talk"), "锁场应出现交谈（NPC）");
     game.handleChoice("explore");
     resolvePromptIfAny(game);
     resolveCombat(game);

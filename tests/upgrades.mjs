@@ -35,7 +35,7 @@ function testUpgradeArmorSwapsEquipment() {
   state.player.gold = 50;
   state.equipment.armor = "warding_robe";
 
-  runService(state, "blacksmith", "upgrade_warding_robe");
+  runService(state, "works_machinist", "upgrade_warding_robe");
 
   assert(!state.inventory.warding_robe, "升级后不应保留 warding_robe");
   assert(Number(state.inventory.warding_robe_lined || 0) === 1, "升级后应获得 warding_robe_lined");

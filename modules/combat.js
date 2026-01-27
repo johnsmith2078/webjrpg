@@ -10,8 +10,12 @@ function damage(atk, def, rng, bonus, critMultiplier) {
   return Math.floor(base * mult);
 }
 
-function getCritMultiplier(combat) {
-  return combat && combat.statusEffects && combat.statusEffects.crit_boost > 0 ? 2 : 1;
+function getPlayerDamageMultiplier(combat) {
+  if (!combat || !combat.statusEffects) return 1;
+  if (Number(combat.statusEffects.damage_boost || 0) <= 0) return 1;
+  const pct = Number(combat.damageBoostPct || 0);
+  if (!Number.isFinite(pct) || pct <= 0) return 1;
+  return 1 + pct;
 }
 
 function getSkillTier(state, skillId) {
@@ -56,11 +60,14 @@ export function startCombat(state, enemyId) {
     swarmDamage: 0,
     turretDamage: 0,
     enraged: false,
+    damageBoostPct: 0,
+    fogDotDmg: 0,
     statusEffects: {
-      focus: 0,
       ward: 0,
       stealth: 0,
-      crit_boost: 0,
+      damage_boost: 0,
+      fogward: 0,
+      fog_dot: 0,
       weaken: 0,
       swarm: 0,
       turret: 0,
@@ -81,6 +88,16 @@ export function startCombat(state, enemyId) {
   state.player.mp = Number(derived.maxMp || state.player.maxMp || 10);
   state.player.en = Number(derived.maxEn || state.player.maxEn || 10);
   state.player.hp = clamp(Number(state.player.hp || 0), 0, Number(derived.maxHp || state.player.maxHp || 20));
+
+  // Fog hazard: some enemies carry a persistent fog that harms the player unless protected.
+  const traits = Array.isArray(e.traits) ? e.traits : [];
+  const armorId = state.equipment && state.equipment.armor ? state.equipment.armor : null;
+  const fogImmune = armorId === "fog_mask";
+  if (traits.includes("fog") && !fogImmune) {
+    state.combat.statusEffects.fog_dot = 3;
+    state.combat.fogDotDmg = 1;
+    state.log.push({ id: nowId(), type: "rare", text: "浓雾贴着皮肤，像在慢慢啃噬。" });
+  }
   
   const name = e.name || enemyId;
   state.log.push({ id: nowId(), type: "rare", text: `「${name}」现身了。` });
@@ -99,6 +116,11 @@ export function resolveCombatAction(state, rng, action) {
   }
   if (c.statusEffects.turret === undefined) c.statusEffects.turret = 0;
   if (c.statusEffects.mana_shield === undefined) c.statusEffects.mana_shield = 0;
+  if (c.statusEffects.damage_boost === undefined) c.statusEffects.damage_boost = 0;
+  if (c.statusEffects.fogward === undefined) c.statusEffects.fogward = 0;
+  if (c.statusEffects.fog_dot === undefined) c.statusEffects.fog_dot = 0;
+  if (c.damageBoostPct === undefined) c.damageBoostPct = 0;
+  if (c.fogDotDmg === undefined) c.fogDotDmg = 0;
   if (c.turretDamage === undefined) c.turretDamage = 0;
   if (c.statusEffects.mana_shield > 0 && Number(state.player?.mp || 0) <= 0) {
     c.statusEffects.mana_shield = 0;
@@ -167,6 +189,26 @@ export function resolveCombatAction(state, rng, action) {
   const weapon = weaponId ? DATA.items[weaponId] : null;
   const weaponCombat = weapon && weapon.combat && typeof weapon.combat === "object" ? weapon.combat : {};
 
+  // Fog DoT tick: happens at the start of the player's turn.
+  if (Number(c.statusEffects.fog_dot || 0) > 0) {
+    const armorId = state.equipment && state.equipment.armor ? state.equipment.armor : null;
+    const fogImmune = armorId === "fog_mask";
+    const protectedByFogward = Number(c.statusEffects.fogward || 0) > 0;
+    if (!fogImmune && !protectedByFogward) {
+      const dot = Math.max(1, Number(c.fogDotDmg || 1));
+      const before = Number(state.player.hp || 0);
+      state.player.hp = clamp(before - dot, 0, Number(derived.maxHp || state.player.maxHp || 20));
+      log.push({ id: nowId(), type: "system", text: `浓雾侵蚀，你失去 ${before - state.player.hp} 点体力。` });
+      if (state.player.hp <= 0) {
+        log.push({ id: nowId(), type: "rare", text: "你倒下了。杉雾合拢。" });
+        state.gameOver = true;
+        state.combat = null;
+        state.log.push(...log);
+        return { ended: true, won: false, fled: false };
+      }
+    }
+  }
+
   const a = (action || "").toLowerCase();
   c.defending = false;
 
@@ -175,6 +217,10 @@ export function resolveCombatAction(state, rng, action) {
     if (duration > 0) {
       c.statusEffects[effect] = duration - 1;
     }
+  }
+
+  if (Number(c.statusEffects.damage_boost || 0) <= 0) {
+    c.damageBoostPct = 0;
   }
 
   if (Number(c.enemyBroken || 0) > 0) {
@@ -188,8 +234,7 @@ export function resolveCombatAction(state, rng, action) {
   }
 
   if (a === "attack") {
-    const sureHit = c.statusEffects.crit_boost > 0;
-    if (baseTraits.includes("evasion") && c.enemyEvasionReady > 0 && !sureHit) {
+    if (baseTraits.includes("evasion") && c.enemyEvasionReady > 0) {
       c.enemyEvasionReady = 0;
       log.push({ id: nowId(), type: "system", text: `「${enemyName}」灵巧地闪避了你的攻击。` });
     } else {
@@ -197,16 +242,12 @@ export function resolveCombatAction(state, rng, action) {
     if (weaponCombat.damageBonusVs && weaponCombat.damageBonusVs[c.enemyId]) {
       weaponBonus += Number(weaponCombat.damageBonusVs[c.enemyId] || 0);
     }
-    const isCrit = c.statusEffects.crit_boost > 0;
-    let dmg = damage(effAtk, e.def, rng, weaponBonus, getCritMultiplier(c));
+    const mult = getPlayerDamageMultiplier(c);
+    let dmg = damage(effAtk, e.def, rng, weaponBonus, mult);
     dmg = applyBreakDamage(dmg);
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
-    
-    if (isCrit) {
-      log.push({ id: nowId(), type: "rare", text: `暴击！你造成了 ${dmg} 点伤害。` });
-    } else {
-      log.push({ id: nowId(), type: "system", text: `你造成了 ${dmg} 点伤害。` });
-    }
+
+    log.push({ id: nowId(), type: mult > 1 ? "rare" : "system", text: `你造成了 ${dmg} 点伤害。` });
     }
   } else if (a === "defend") {
     c.defending = true;
@@ -262,11 +303,17 @@ export function resolveCombatAction(state, rng, action) {
       state.inventory[itemId] = qty - 1;
       if (state.inventory[itemId] <= 0) delete state.inventory[itemId];
       c.statusEffects.ward = Math.max(c.statusEffects.ward || 0, item.combat.turns || 2);
+      if (item.combat.fogWard) {
+        c.statusEffects.fogward = Math.max(c.statusEffects.fogward || 0, item.combat.turns || 2);
+      }
     } else if (item && item.combat && item.combat.type === "focus") {
       state.inventory[itemId] = qty - 1;
       if (state.inventory[itemId] <= 0) delete state.inventory[itemId];
-      c.statusEffects.crit_boost = Math.max(c.statusEffects.crit_boost, item.combat.turns);
-      log.push({ id: nowId(), type: "rare", text: `「${item.name}」的香气让你专注。` });
+      const turns = Number(item.combat.turns || 1);
+      const pct = Number(item.combat.dmgPct || 0);
+      c.statusEffects.damage_boost = Math.max(Number(c.statusEffects.damage_boost || 0), turns);
+      c.damageBoostPct = Math.max(Number(c.damageBoostPct || 0), pct);
+      log.push({ id: nowId(), type: "rare", text: `「${item.name}」的苦与香让你更狠。` });
     } else if (heal > 0) {
       state.inventory[itemId] = qty - 1;
       if (state.inventory[itemId] <= 0) delete state.inventory[itemId];
@@ -292,6 +339,7 @@ export function resolveCombatAction(state, rng, action) {
 
   if (c.statusEffects.turret > 0 && c.enemyHp > 0) {
     let tick = Math.max(1, Number(c.turretDamage || 1));
+    tick = Math.floor(tick * getPlayerDamageMultiplier(c));
     tick = applyBreakDamage(tick);
     c.enemyHp = clamp(c.enemyHp - tick, 0, 9999);
     c.statusEffects.turret = Math.max(0, c.statusEffects.turret - 1);
@@ -300,6 +348,7 @@ export function resolveCombatAction(state, rng, action) {
 
   if (c.statusEffects.swarm > 0 && c.enemyHp > 0) {
     let tick = Math.max(1, Number(c.swarmDamage || 1));
+    tick = Math.floor(tick * getPlayerDamageMultiplier(c));
     tick = applyBreakDamage(tick);
     c.enemyHp = clamp(c.enemyHp - tick, 0, 9999);
     c.statusEffects.swarm = Math.max(0, c.statusEffects.swarm - 1);
@@ -495,8 +544,7 @@ function handleSkill(state, skillId, rng, log, applyBreakDamage) {
     } else if (c.usedPurify) {
       log.push({ id: nowId(), type: "system", text: "这一招已经用过了。" });
     } else {
-      const sureHit = c.statusEffects.crit_boost > 0;
-      if (enemyTraits.includes("evasion") && c.enemyEvasionReady > 0 && !sureHit) {
+      if (enemyTraits.includes("evasion") && c.enemyEvasionReady > 0) {
         c.enemyEvasionReady = 0;
         log.push({ id: nowId(), type: "system", text: `「${enemyName}」灵巧地闪避了你的攻击。` });
         return { ended: false };
@@ -511,7 +559,7 @@ function handleSkill(state, skillId, rng, log, applyBreakDamage) {
         log.push({ id: nowId(), type: "rare", text: "诅咒之力加持，伤害翻倍！" });
       }
       
-      dmg = Math.floor(dmg * getCritMultiplier(c));
+      dmg = Math.floor(dmg * getPlayerDamageMultiplier(c));
       if (applyBreakDamage) dmg = applyBreakDamage(dmg);
       c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
       log.push({ id: nowId(), type: "rare", text: `破邪斩！你造成了 ${dmg} 点伤害。` });
@@ -521,20 +569,21 @@ function handleSkill(state, skillId, rng, log, applyBreakDamage) {
       }
     }
   } else if (skillId === "focus") {
-    c.statusEffects.focus = Math.max(c.statusEffects.focus, skill.duration);
-    c.statusEffects.crit_boost = Math.max(c.statusEffects.crit_boost, skill.duration);
-    log.push({ id: nowId(), type: "rare", text: "你凝神聚力，感知变得敏锐。" });
+    const turns = Math.max(1, Number(skill.duration || 1));
+    const pct = Math.max(0, Number(skill.boost_amount || 0) / 100);
+    c.statusEffects.damage_boost = Math.max(Number(c.statusEffects.damage_boost || 0), turns);
+    c.damageBoostPct = Math.max(Number(c.damageBoostPct || 0), pct);
+    log.push({ id: nowId(), type: "rare", text: "你凝神聚力，出手更狠。" });
   } else if (skillId === "sweep") {
     const e = DATA.enemies[c.enemyId];
-    const sureHit = c.statusEffects.crit_boost > 0;
-    if (enemyTraits.includes("evasion") && c.enemyEvasionReady > 0 && !sureHit) {
+    if (enemyTraits.includes("evasion") && c.enemyEvasionReady > 0) {
       c.enemyEvasionReady = 0;
       log.push({ id: nowId(), type: "system", text: `「${e.name || c.enemyId}」灵巧地闪避了你的攻击。` });
     } else {
     const derived = derivePlayerStats(state);
     const pct = Number(skill.damage_percent || 0) + sumSkillUpgrade(state, "sweep", "damage_percent");
     const baseDmg = Math.floor(Number(derived.atk || 0) * (pct / 100));
-    let dmg = damage(baseDmg, e.def, rng, 0, getCritMultiplier(c));
+    let dmg = damage(baseDmg, e.def, rng, 0, getPlayerDamageMultiplier(c));
     if (applyBreakDamage) dmg = applyBreakDamage(dmg);
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     log.push({ id: nowId(), type: "rare", text: `横扫！你造成了 ${dmg} 点范围伤害。` });
@@ -567,8 +616,7 @@ function handleSkill(state, skillId, rng, log, applyBreakDamage) {
     log.push({ id: nowId(), type: "rare", text: "你融入阴影，身形变得模糊。" });
   } else if (skillId === "power_strike") {
     const e = DATA.enemies[c.enemyId];
-    const sureHit = c.statusEffects.crit_boost > 0;
-    if (enemyTraits.includes("evasion") && c.enemyEvasionReady > 0 && !sureHit) {
+    if (enemyTraits.includes("evasion") && c.enemyEvasionReady > 0) {
       c.enemyEvasionReady = 0;
       log.push({ id: nowId(), type: "system", text: `「${e.name || c.enemyId}」灵巧地闪避了你的攻击。` });
       return { ended: false };
@@ -576,7 +624,7 @@ function handleSkill(state, skillId, rng, log, applyBreakDamage) {
     const derived = derivePlayerStats(state);
     const mult = 1.6 + sumSkillUpgrade(state, "power_strike", "mult");
     const baseAtk = Math.floor(Number(derived.atk || 0) * mult);
-    let dmg = damage(baseAtk, e.def, rng, 0, getCritMultiplier(c));
+    let dmg = damage(baseAtk, e.def, rng, 0, getPlayerDamageMultiplier(c));
     if (applyBreakDamage) dmg = applyBreakDamage(dmg);
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     log.push({ id: nowId(), type: "rare", text: `强力击！你造成了 ${dmg} 点伤害。` });
@@ -594,7 +642,7 @@ function handleSkill(state, skillId, rng, log, applyBreakDamage) {
     const maxMp = Number(derived.maxMp || state.player.maxMp || 0);
     const mpBonus = Math.floor(maxMp * mpScale);
     const baseAtk = Math.max(0, base + mpBonus);
-    let dmg = Math.max(1, damage(baseAtk, e.def, rng, 0, getCritMultiplier(c)));
+    let dmg = Math.max(1, damage(baseAtk, e.def, rng, 0, getPlayerDamageMultiplier(c)));
     if (applyBreakDamage) dmg = applyBreakDamage(dmg);
     c.enemyHp = clamp(c.enemyHp - dmg, 0, 9999);
     log.push({ id: nowId(), type: "rare", text: `火球术！法力越盛，爆炎越猛。造成 ${dmg} 点魔法伤害。` });

@@ -115,7 +115,7 @@
 - `monster_fang`：兽牙（武器升级材料）
 - `spirit_stone`：灵石（稀有材料；当前无技能强化效果）
 - `health_potion`：生命药水（恢复更多HP）
-- `focus_tea`：凝神茶（短暂必定暴击并造成双倍伤害）
+- `focus_tea`：凝神茶（战斗道具：短暂增伤 +50%）
 - `explosive_trap`：爆炸陷阱（战斗道具：群体伤害）
 - `warding_talisman`：护身符（战斗道具：减少伤害）
 - `thieves_tools`：盗贼工具（稀有工具；当前无专属交互）
@@ -156,8 +156,8 @@
 - `paper_tonic`：纸符补剂（恢复）
 - `chain_snare`：锁链索套（战斗道具：晕眩 1 回合）
 - `shrapnel_charge`：碎片雷（战斗道具：群体伤害）
-- `fogward_talisman`：雾护符（战斗道具：减少伤害）
-- `bitter_focus_tea`：苦凝神茶（战斗道具：必定暴击并造成双倍伤害）
+- `fogward_talisman`：雾护符（战斗道具：减少伤害；并可隔开部分浓雾侵蚀）
+- `bitter_focus_tea`：苦凝神茶（战斗道具：短暂增伤 +70%）
 
 （第二章 / 第三章：升级装备变体）
 
@@ -196,8 +196,10 @@
 
 - `ch2_route_opened`：已打开雾背之路（允许进入雾背驿站）
 - `ch2_rust_opened`：已知锈水渠的路（允许进入锈水渠/锁场/下水工坊）
+- `ch2_rust_scouted`：已在锈水渠找到“阀门/引雾”的线索（用于解锁下水工坊主线事件）
 - `opened_lockyard_chest`：已打开锁场暗箱（连弩只可获取一次）
 - `defeated_works_guardian`：已击败泵守（用于解锁雾井）
+- `ch3_well_surveyed`：已在雾井确认“井下路线/回声”线索（用于解锁黑光心室）
 - `ch3_imprint_done`：已完成刻印（允许进入黑光心室）
 - `defeated_heart_pump_guardian`：已击败主泵守（用于触发第三章结局）
 - `ending_ch3_reset`：第三章结局分支：复位
@@ -208,7 +210,7 @@
 - `met_elder`：已遇见村长（解锁高级信息）
 - `met_wanderer`：已遇见流浪者
 - `skills_learned_purify`：已学会破邪斩
-- `skills_learned_focus`：已学会凝神（必定暴击并造成双倍伤害）
+- `skills_learned_focus`：已学会凝神（短暂增伤）
 - `skills_learned_power_strike`：已学会强力击
 - `skills_learned_war_cry`：已学会战吼
 - `skills_learned_fireball`：已学会火球术
@@ -217,6 +219,7 @@
 - `skills_learned_shock_swarm`：已学会电弧蜂群
 - `skills_learned_heal_light`：已学会微光治愈
 - `skills_learned_sweep`：已学会横扫（当前无获取途径）
+- `skills_learned_sweep`：已学会横扫（第二章职业分支可获得）
 - `skills_learned_stealth`：已学会隐身（通过 `paper_atrium_imprint` 刻印获得）
 - `skills_learned_counter`：已学会反击（通过 `paper_atrium_imprint` 刻印获得；战斗未实现反击触发）
 - `has_heavy_blade`：已锻造重剑
@@ -233,12 +236,23 @@
 - `herbalist`：草药师（提供药剂制作和治疗服务）
 - `wanderer`：流浪者（提供稀有物品和神秘情报）
 
+（第二章 / 第三章）
+
+- `canal_keeper`：守渠人（雾背驿站的叙事锚点；提供雾背补给/兑换）
+- `waystation_quartermaster`：驿站军需官（补给与基础材料获取，减少回第一章）
+- `lockyard_tinker`：锁场修匠（零件兑换与工具补给）
+- `works_machinist`：工坊机修（第二章升级锚点：装备升级/技能进阶）
+- `wellkeeper`：雾井守井人（第三章补给锚点：草药/灵物来源与护身类进阶）
+- `atrium_scribe`：纸符天井抄符人（第三章进阶锚点：刻印相关服务/技能进阶）
+- `heart_smith`：心室放逐匠（第三章终盘锚点：高阶升级与章末准备）
+- `rust_channel_scavenger`：沟渠拾荒者（第二章材料补给：把锈水渠产出转为常用素材）
+
 注：`shrine_keeper` 仅为叙事称呼，当前实现未作为 `DATA.npcs` 出现。
 
 ### 1.7 技能（skill_id）
 
 - `purify`：破邪斩（对灵体/守护者伤害更高，可清除诅咒）
-- `focus`：凝神（必定暴击并造成双倍伤害）
+- `focus`：凝神（短暂增伤）
 - `sweep`：横扫（对多个敌人造成伤害）
 - `counter`：反击（受到攻击时自动反击）
 - `heal_light`：微光治愈（少量恢复HP）
@@ -429,6 +443,9 @@
 - 结果：设置 `ch2_rust_opened = true`
 - 叙事锚点：雾有铁味；驿站里的人不问来处，只盯着你怀里的东西。
 - 关键人物（叙事称呼）：守渠人（`canal_keeper`）与流浪者（`wanderer`）在此线推进“门/锁”的主题。
+- NPC（实现）：
+  - `canal_keeper`（守渠人）：雾背补给、路线信息与“规矩”提示
+  - `waystation_quartermaster`（军需官）：提供第二章基础材料来源（例如 `herbs` / `iron_ore` 等），降低第二章制作对第一章回刷的依赖
 - 雾背规矩（叙事）：夜里不出灯圈，不敲锈铃。
 
 职业分支（第二章：驿站）
@@ -442,6 +459,14 @@
 - 解锁：`ch2_rust_opened = true`
 
 - 叙事推进：在 `rust_channel` 第一次看见“雾被引走”的痕迹；铁门上出现鸟居形铆钉（像把神社做成锁）。
+- 非线性目标（实现）：第二章不再只是一条直线。
+  - 目标 A（锈水渠）：触发一次“阀门/引雾”线索事件，设置 `ch2_rust_scouted = true`
+  - 目标 B（锁场）：解决暗箱（开/放过都算“处理过”，但只有开箱拿到奖励），至少设置 `opened_lockyard_chest = true` 才能推进主线
+  - A 与 B 可任意顺序完成；当两者都完成后，才允许进入 `lower_works` 的主线推进
+
+NPC（实现）：
+  - `lockyard_tinker`：提供齿轮零件兑换与“工具缺口”补救（例如缺少 `thieves_tools` 时的兜底路径）
+  - `rust_channel_scavenger`：提供草药/矿料等基础材料获取，避免第二章制作被第一章素材卡死
 
 关键事件：
 
@@ -453,8 +478,12 @@
 ### Act 8：下水工坊（`lower_works`）
 
 - 事件：`lower_works_guardian`（once/priority）
+  - 前置：`ch2_rust_scouted = true` 且 `opened_lockyard_chest = true`
 - 战斗：`works_guardian`
 - 掉落：`pump_key x1`（并应确保能获得 `spirit_stone` 用于第三章刻印）
+
+NPC（实现）：
+  - `works_machinist`：第二章升级锚点（把“装备升级/技能进阶”从第一章 NPC 移到第二章）
 
 - 章末钩子（叙事）：泵机短暂停下，雾反而更厚，像有人在更深处接管。
 
@@ -468,6 +497,10 @@
 
 - 解锁：`defeated_works_guardian = true` 且持有 `pump_key x1`
 - 事件：`ch3_mist_well_intro`（once/priority）
+- 结果：设置 `ch3_well_surveyed = true`
+
+NPC（实现）：
+  - `wellkeeper`：第三章补给锚点（草药/灵物来源与护身类进阶）
 
 - 叙事推进：雾不再飘，像水贴墙；井口边碎纸符的墨迹像干掉的血。
 
@@ -480,8 +513,12 @@
 
 - 主题反转（叙事）：雾既是诅咒也是封条；遗物不是奖赏，而是开关。
 
+NPC（实现）：
+  - `atrium_scribe`：第三章进阶锚点（刻印相关服务/技能进阶）
+
 ### Act 11：黑光心室（`blacklight_heart`）
 
+- 进入条件（实现）：`ch3_imprint_done = true` 且 `ch3_well_surveyed = true`
 - 事件：`blacklight_heart_boss`（once/priority）→ 战斗 `heart_pump_guardian`
 - 事件：`ch3_ending`（once/priority，prompt）
 - 选择：
@@ -496,6 +533,9 @@
 - 战士：获得一次稳妥的护身手段（例如 `warding_talisman`）再进入战斗
 - 法师：获得一次爆发窗口（例如 `focus_tea`）再进入战斗
 - 工程师：获得一次开场爆破（例如 `explosive_trap`）再进入战斗
+
+NPC（实现）：
+  - `heart_smith`：第三章终盘锚点（高阶升级与章末准备）
 
 ---
 
@@ -591,10 +631,10 @@ NPC通过两种方式出现：
 
 #### `focus`（凝神）
 - **获取**：`blacksmith_encounter` 选择“学习锻造技巧”，或后续通过铁匠服务 `teach_focus`
-- **效果**：必定暴击并造成双倍伤害（持续 2 回合）
+- **效果**：短暂增伤（持续 2 回合）
 - **消耗**：消耗 1 点 SP；冷却 3 回合
 
-注：`focus_tea` 是独立的战斗消耗品（使用后也会必定暴击并造成双倍伤害），与技能 `focus` 不互相依赖。
+注：`focus_tea` / `bitter_focus_tea` 是独立的战斗消耗品（增伤更高），与技能 `focus` 不互相依赖。
 
 #### `sweep`（横扫）
 - **获取**：第二章驿站战士分支获得（`ch2_waystation_intro` 选择战士奖励）
@@ -1001,7 +1041,7 @@ DATA.equipmentBonuses = {
 | `monster_fang` | 武器升级材料（让你去追猎“特定怪”而非无脑刷） | 为了 2 颗兽牙，你愿意再进一次雾林 | 掉落稀有；机会成本 | `forge_master_blade` / `upgrade_weapon` | `shadow_beast`/`wolf`/`mine_warlord` 掉落 |
 | `spirit_stone` | 技能强化石（持有即增强技能；打造装备会消耗它） | “灵石共鸣”：关键技能伤害/治疗明显提升 | 作为材料会被消耗；稀有 | 强化所有技能；与多技能流绑定 | `cursed_miner`/`crystal_golem`/Boss 掉落；流浪者购买；任务奖励 |
 | `health_potion` | 应急大回复（容错） | 血线见底时一口回血把战斗拉回正轨 | 战斗消耗品 | 搭配 `warding_talisman` 顶住重击 | `brew_health_potion`、任务奖励 |
-| `focus_tea` | 速效爆发药（短窗口双倍暴击） | 你先喝茶再强力击：一回合打出爆发 | 战斗消耗品 | 与 `power_strike` / `repeating_crossbow` 协同 | `craft_focus_tea`、任务奖励 |
+| `focus_tea` | 速效爆发药（短窗口增伤） | 你先喝茶再强力击：一回合打出爆发 | 战斗消耗品 | 与 `power_strike` / `repeating_crossbow` 协同 | `craft_focus_tea`、任务奖励 |
 | `explosive_trap` | 破防/清场爆发（对召唤与高防尤其好用） | 召唤物堆起来前，一炸清空节奏 | 战斗消耗品 | 反制 `summon`、压制 `high_def` | `assemble_explosive_trap`、`repair_auto_turret`、任务奖励 |
 | `warding_talisman` | 护身保险（重击窗口的最稳解法） | 看到蓄力重击，你开符硬吃不死 | 战斗消耗品 | 反制 `heavy_attack`、保底过关 | `enchant_warding_talisman`、任务奖励 |
 | `thieves_tools` | 工具钥匙（解锁“隐藏选项/捷径/宝箱”） | prompt 里出现“撬开侧门（需要盗贼工具）”，你直接拿到稀有奖励 | 作为开锁工具可设定为消耗品；机会成本 | 解锁 `repeating_crossbow` 获取线；解锁 `stealth` 学习线 | `shadow_beast` 掉落；`wanderer_encounter` 获得；任务奖励 |
@@ -1020,7 +1060,7 @@ DATA.equipmentBonuses = {
 | skill_id | 核心意义（独特价值） | 爽点时刻（示例） | 代价/限制 | 主要联动/克制 | 获取（目标） |
 |---|---|---|---|---|---|
 | `purify` | 驱邪与清咒（遇到诅咒/灵体时的“翻盘按钮”） | 你带着不祥使出破邪斩：伤害翻倍并净化 | 每战 1 次；需要武器允许 | 反制 `curses`；对灵体高效 | 锻造铁刃；铁匠事件可学 |
-| `focus` | 锁定破绽（把一回合变成“双倍暴击”） | 凝神后接强力击：打出超额伤害 | SP 消耗 + 冷却 | 与 `power_strike` 协同 | 铁匠服务 `teach_focus` |
+| `focus` | 锁定破绽（短窗口增伤） | 凝神后接强力击：打出超额伤害 | SP 消耗 + 冷却 | 与 `power_strike` 协同 | 铁匠服务 `teach_focus` |
 | `sweep` | 清场/扫荡（专门处理召唤/堆叠类麻烦） | 召唤物堆起时一招清空节奏 | SP 消耗 + 冷却 | 反制 `summon`；与陷阱协同 | 目标：铁匠服务教授（需重剑或相关条件） |
 | `counter` | 防守反击（把挨打变成输出） | 敌人重击落下，你格挡并触发反击 | 被动；触发条件明确 | 反制 `heavy_attack`；与 `plate_armor` 协同 | 目标：击败/见识重击后由铁匠教授或事件领悟 |
 | `heal_light` | 战斗内续航（把 SP 变成生命线） | 你在濒死边缘抬一口血，继续压制 | SP 消耗 + 冷却；可被打断/压制 | 与 `mystic_herb`/药剂协同 | 草药师事件/服务教授 |
