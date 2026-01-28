@@ -256,10 +256,10 @@ export function createGame({ state }) {
     const beforeMp = Number(s.player.mp || 0);
     const beforeEn = Number(s.player.en || 0);
 
-    s.player.hp = Math.min(maxHp, s.player.hp + 8);
-    if (s.player.maxMp !== undefined) s.player.mp = Math.min(maxMp, Number(s.player.mp || 0) + 5);
-    if (s.player.maxEn !== undefined) s.player.en = Math.min(maxEn, Number(s.player.en || 0) + 5);
-    s.timeMin += 30;
+    s.player.hp = Math.min(maxHp, s.player.hp + 5);
+    if (s.player.maxMp !== undefined) s.player.mp = Math.min(maxMp, Number(s.player.mp || 0) + 3);
+    if (s.player.maxEn !== undefined) s.player.en = Math.min(maxEn, Number(s.player.en || 0) + 3);
+    s.timeMin += 45;
 
     const healedHp = s.player.hp - beforeHp;
     const healedMp = Number(s.player.mp || 0) - beforeMp;

@@ -25,7 +25,7 @@ function testSellOre() {
   game.handleChoice("craft:sell_ore");
 
   const next = game.getState();
-  assert(next.player.gold === 2, "sell_ore should add gold");
+  assert(next.player.gold === 1, "sell_ore should add gold");
   assert(!next.inventory.gold, "gold should not be stored in inventory");
 }
 

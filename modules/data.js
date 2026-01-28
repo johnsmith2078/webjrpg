@@ -442,8 +442,8 @@ export const DATA = {
     sell_ore: {
       name: "出售铁矿石",
       inputs: { iron_ore: 3 },
-      outputs: { gold: 2 },
-      timeCostMin: 5,
+      outputs: { gold: 1 },
+      timeCostMin: 10,
       requirements: { flags: ["met_blacksmith"] }
     },
     brew_health_potion: {
@@ -536,12 +536,12 @@ export const DATA = {
   },
 
   enemies: {
-    bandit: { name: "山贼", hp: 12, atk: 2, def: 0, gold: 4, loot: { cedar_wood: 1 } },
-    oni_wisp: { name: "鬼面火", hp: 10, atk: 3, def: 1, gold: 6, loot: { paper_charm: 1 } },
+    bandit: { name: "山贼", hp: 12, atk: 3, def: 0, gold: 3, loot: { cedar_wood: 1 } },
+    oni_wisp: { name: "鬼面火", hp: 10, atk: 4, def: 1, gold: 4, loot: { paper_charm: 1 } },
     shrine_guardian: {
       name: "神社守" ,
       hp: 22,
-      atk: 4,
+      atk: 5,
       def: 2,
       gold: 20,
       loot: { onigiri: 2, shrine_relic: 1 }
@@ -551,25 +551,25 @@ export const DATA = {
       hp: 15,
       atk: 3,
       def: 1,
-      gold: 12,
+      gold: 9,
       loot: { monster_fang: 1, thieves_tools: 1 },
       traits: ["evasion"]
     },
     wolf: {
       name: "野狼",
       hp: 10,
-      atk: 2,
+      atk: 3,
       def: 0,
-      gold: 8,
+      gold: 6,
       loot: { monster_fang: 1 },
       traits: ["evasion"]
     },
     cursed_miner: {
       name: "被诅咒的矿工",
       hp: 20,
-      atk: 4,
+      atk: 5,
       def: 2,
-      gold: 14,
+      gold: 10,
       loot: { iron_ingot: 1, spirit_stone: 1 },
       traits: ["curses", "heavy_attack"]
     },
@@ -578,25 +578,25 @@ export const DATA = {
       hp: 24,
       atk: 2,
       def: 3,
-      gold: 15,
+      gold: 11,
       loot: { mystic_herb: 3, cedar_wood: 5 },
       traits: ["summon", "high_def"]
     },
     crystal_golem: {
       name: "水晶巨像",
       hp: 18,
-      atk: 4,
+      atk: 5,
       def: 3,
-      gold: 16,
+      gold: 12,
       loot: { mana_crystal: 2, spirit_stone: 1 },
       traits: ["high_def"]
     },
     clockwork_spider: {
       name: "发条蜘蛛",
       hp: 16,
-      atk: 3,
+      atk: 4,
       def: 1,
-      gold: 14,
+      gold: 10,
       loot: { scrap_metal: 3 },
       traits: ["evasion"]
     },
@@ -658,53 +658,53 @@ export const DATA = {
     rust_leech: {
       name: "锈蚀水蛭",
       hp: 14,
-      atk: 3,
+      atk: 4,
       def: 1,
-      gold: 10,
+      gold: 7,
       loot: { rust_scale: 2, oil_slick: 1, herbs: 1 }
     },
     lockyard_sentinel: {
       name: "锁场哨兵",
       hp: 18,
-      atk: 4,
+      atk: 5,
       def: 2,
-      gold: 14,
+      gold: 10,
       loot: { gear_spring: 1, pump_rivet: 1 },
       traits: ["heavy_attack"]
     },
     fog_skulker: {
       name: "雾潜客",
       hp: 16,
-      atk: 3,
+      atk: 4,
       def: 1,
-      gold: 12,
+      gold: 9,
       loot: { fog_fiber: 2, monster_fang: 1 },
       traits: ["evasion", "fog"]
     },
     paper_swarm: {
       name: "纸屑群",
       hp: 12,
-      atk: 3,
+      atk: 4,
       def: 1,
-      gold: 10,
+      gold: 7,
       loot: { paper_ash: 2, paper_charm: 1 },
       traits: ["summon"]
     },
     steam_wretch: {
       name: "蒸汽残躯",
       hp: 20,
-      atk: 4,
+      atk: 5,
       def: 2,
-      gold: 16,
+      gold: 12,
       loot: { oil_slick: 2, scrap_metal: 2, iron_ore: 1 },
       traits: ["heavy_attack"]
     },
     heart_needle: {
       name: "心针",
       hp: 18,
-      atk: 4,
+      atk: 5,
       def: 2,
-      gold: 18,
+      gold: 13,
       loot: { ink_resin: 1, spirit_stone: 1 },
       traits: ["curses", "fog"]
     },
@@ -1968,9 +1968,9 @@ export const DATA = {
           sell_ore: {
             name: "出售铁矿石",
             requires: { items: { iron_ore: 3 } },
-            gives: { gold: 2 },
+            gives: { gold: 1 },
             cost: 0,
-            description: "卖出3块铁矿石换取2钱"
+            description: "卖出3块铁矿石换取1钱"
           },
           upgrade_weapon: {
             name: "升级武器",
@@ -2005,9 +2005,9 @@ export const DATA = {
           sell_herbs: {
             name: "出售草药",
             requires: { flags: ["met_herbalist"], items: { herbs: 5 } },
-            gives: { gold: 3 },
+            gives: { gold: 2 },
             cost: 0,
-            description: "卖出5把草药换取3钱"
+            description: "卖出5把草药换取2钱"
           },
           buy_mystic: {
             name: "购买神秘草药",

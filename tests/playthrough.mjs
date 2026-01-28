@@ -48,6 +48,62 @@ function countItem(state, id) {
   return Number(state.inventory[id] || 0);
 }
 
+const NORMAL_PLAYER_POLICY = {
+  carryCaps: {
+    herbs: 6,
+    onigiri: 6,
+    health_potion: 4,
+    bound_charm: 2,
+    warding_talisman: 2,
+    focus_tea: 1,
+    explosive_trap: 1
+  },
+  // Target amounts to top up to (<= caps). Keep small and deterministic.
+  topUpTargets: {
+    herbs: 6,
+    onigiri: 5,
+    bound_charm: 2,
+    warding_talisman: 2,
+    focus_tea: 1
+  }
+};
+
+function capFor(id) {
+  return Number(NORMAL_PLAYER_POLICY.carryCaps[id] || 999);
+}
+
+function topUpTargetFor(id) {
+  return Math.min(capFor(id), Number(NORMAL_PLAYER_POLICY.topUpTargets[id] || 0));
+}
+
+function cookRiceUpTo(game, targetOnigiri) {
+  for (let i = 0; i < 50; i++) {
+    const s = game.getState();
+    if (countItem(s, "onigiri") >= targetOnigiri) return;
+    if (countItem(s, "rice") <= 0) return;
+    if (!canSeeRecipe(s, "cook_rice")) return;
+    if (!tryCraft(game, "cook_rice")) return;
+  }
+}
+
+function craftUpTo(game, recipeId, itemId, targetQty) {
+  const cappedTarget = Math.min(capFor(itemId), targetQty);
+  craftUntil(game, recipeId, itemId, cappedTarget);
+}
+
+function useNPCService(game, npcId, serviceId) {
+  const st = game.getState();
+  const hasTalk = game.choices().some((c) => c.id === "talk");
+  if (!hasTalk) return false;
+  game.handleChoice("talk");
+  if (game.getState().ui.mode === "talk") {
+    game.handleChoice(`talk:${npcId}`);
+  }
+  game.handleChoice(`npc_talk:service:${serviceId}`);
+  game.handleChoice("npc_talk:goodbye");
+  return true;
+}
+
 function canSeeRecipe(state, recipeId) {
   return listAvailableRecipes(state).some((r) => r.id === recipeId);
 }
@@ -115,12 +171,13 @@ function travelTo(game, id) {
   resolvePromptIfAny(game);
 }
 
-function maybeHeal(game) {
+function maybeHeal(game, ctx = {}) {
   const s = game.getState();
   const derived = derivePlayerStats(s);
   const maxHp = Number(derived.maxHp || s.player.maxHp || 20);
-  const healSkillThreshold = Math.max(10, Math.floor(maxHp * 0.25));
-  const consumeThreshold = Math.max(12, Math.floor(maxHp * 0.35));
+  const isHard = !!(ctx.isBoss || ctx.isTough);
+  const healSkillThreshold = isHard ? Math.max(10, Math.floor(maxHp * 0.35)) : Math.max(10, Math.floor(maxHp * 0.25));
+  const consumeThreshold = isHard ? Math.max(12, Math.floor(maxHp * 0.45)) : Math.max(10, Math.floor(maxHp * 0.25));
   if (
     s.combat &&
     // heal_light uses SP (limited per fight); save it for when it matters.
@@ -151,6 +208,7 @@ function resolveCombat(game) {
   // 简单策略：低血先吃饭团，否则一直攻击。
   let lastEnemy = null;
   const toughEnemies = new Set([
+    "shadow_beast",
     "cursed_miner",
     "crystal_golem",
     "crystal_overseer",
@@ -165,7 +223,14 @@ function resolveCombat(game) {
     const st = game.getState();
     if (!st.combat) return;
     lastEnemy = st.combat.enemyId;
-    maybeHeal(game);
+    const enemyIdForHeal = st.combat ? st.combat.enemyId : null;
+    const isToughForHeal = !!enemyIdForHeal && toughEnemies.has(enemyIdForHeal);
+    const isBossForHeal =
+      enemyIdForHeal === "crystal_overseer" ||
+      enemyIdForHeal === "clockwork_titan" ||
+      enemyIdForHeal === "mine_warlord" ||
+      enemyIdForHeal === "heart_pump_guardian";
+    maybeHeal(game, { enemyId: enemyIdForHeal, isTough: isToughForHeal, isBoss: isBossForHeal });
     if (game.getState().combat) {
       const cs = game.getState();
       const enemyId = cs.combat ? cs.combat.enemyId : null;
@@ -176,11 +241,23 @@ function resolveCombat(game) {
         enemyId === "mine_warlord" ||
         enemyId === "heart_pump_guardian";
       // Boss fights are tuned to assume some resource usage; keep the test stable by spending defensively here.
-      const useConsumables = (isBoss || isTough) && !cs.flags.class_mage;
+      const useConsumables = (isBoss || isTough || (enemyId && evasionEnemies.has(enemyId))) && !cs.flags.class_mage;
 
       // If cursed, prioritize purify to cleanse (stabilizes curse-using enemies).
       if (cs.combat && cs.flags.cursed && canPurify(cs) && cs.flags.skills_learned_purify && !cs.combat.usedPurify) {
         game.handleChoice("skill:purify");
+      } else
+
+      // Apply war_cry early in hard fights to reduce incoming damage.
+      if (
+        cs.combat &&
+        (isBoss || isTough || (enemyId && evasionEnemies.has(enemyId))) &&
+        cs.flags.skills_learned_war_cry &&
+        (cs.player?.sp || 0) >= 1 &&
+        (!cs.combat.statusEffects || !cs.combat.statusEffects.weaken) &&
+        (!cs.combat.skillCooldowns || !cs.combat.skillCooldowns.war_cry)
+      ) {
+        game.handleChoice("skill:war_cry");
       } else
 
       // Boss charge/break mechanic: if boss is charging, prefer to interrupt with bound_charm; otherwise defend.
@@ -231,14 +308,14 @@ function resolveCombat(game) {
         game.handleChoice("use:bound_charm");
       } else if (
         cs.combat &&
-        useConsumables &&
+        (isBoss || (cs.combat && cs.combat.enemyCharge > 0) || (isTough && (cs.player.hp || 0) <= 12)) &&
         (cs.inventory.warding_talisman || 0) > 0 &&
         (!cs.combat.statusEffects || !cs.combat.statusEffects.ward)
       ) {
         game.handleChoice("use:warding_talisman");
       } else if (
         cs.combat &&
-        useConsumables &&
+        (isBoss || isTough) &&
         (cs.inventory.focus_tea || 0) > 0 &&
         (!cs.combat.statusEffects || !cs.combat.statusEffects.damage_boost)
       ) {
@@ -312,6 +389,17 @@ function resolveCombat(game) {
     if (game.getState().gameOver) {
       const snap = snapshot(game.getState());
       throw new Error(`战斗失败：游戏结束 (enemy=${lastEnemy})\n${JSON.stringify(snap, null, 2)}`);
+    }
+
+    // Combat ended this step; recover a bit instead of burning through consumables.
+    const after = game.getState();
+    if (!after.combat && !after.gameOver && !after.prompt) {
+      if (countItem(after, "rice") > 0 && countItem(after, "onigiri") < capFor("onigiri")) {
+        tryCraft(game, "cook_rice");
+      }
+    }
+    if (!after.combat && !after.gameOver && !after.prompt && after.player.hp <= 10) {
+      game.handleChoice("rest");
     }
   }
   const snap = snapshot(game.getState());
@@ -388,11 +476,7 @@ export function runPlaythrough(opts = {}) {
     120,
     "收集米"
   );
-  // 把米都做成饭团
-  while (countItem(game.getState(), "rice") > 0) {
-    game.handleChoice("craft");
-    game.handleChoice("craft:cook_rice");
-  }
+  cookRiceUpTo(game, topUpTargetFor("onigiri"));
   assert(countItem(game.getState(), "onigiri") >= 4, "应至少有 4 个饭团");
 
   // 2) 解锁并前往杉径
@@ -423,6 +507,27 @@ export function runPlaythrough(opts = {}) {
     "触发草药师对话"
   );
   assert(game.getState().quests["herbalist_collection"], "应触发草药采集任务");
+
+  // After meeting the herbalist, a dangerous ambush may trigger; recover a bit like a normal player.
+  travelTo(game, "village");
+  // If we spent early food, cook a little more before heading back out.
+  if (countItem(game.getState(), "onigiri") < 4) {
+    const needRice = Math.max(0, 4 - countItem(game.getState(), "onigiri"));
+    doUntil(
+      game,
+      () => countItem(game.getState(), "rice") >= needRice,
+      () => {
+        game.handleChoice("explore");
+        resolvePromptIfAny(game);
+        resolveCombat(game);
+      },
+      80,
+      "补米(草药师后)"
+    );
+    cookRiceUpTo(game, 4);
+  }
+  while (game.getState().player.hp < game.getState().player.maxHp) game.handleChoice("rest");
+  travelTo(game, "forest_path");
 
   // Keep route later needs thieves_tools to open the lockyard chest.
   if (ending === "keep") {
@@ -637,6 +742,24 @@ export function runPlaythrough(opts = {}) {
 
   // Engineer prep: craft scrap pistol BEFORE shrine is cleansed (avoids triggering clockwork_titan).
   if (game.getState().flags.class_engineer && !game.getState().flags.has_scrap_pistol) {
+    // Normal-player carry: ensure we have a little sustain before entering the lab.
+    if (countItem(game.getState(), "onigiri") < 2) {
+      const targetOnigiri = Math.min(2, topUpTargetFor("onigiri"));
+      const needRice = Math.max(0, targetOnigiri - countItem(game.getState(), "onigiri"));
+      doUntil(
+        game,
+        () => countItem(game.getState(), "rice") >= needRice,
+        () => {
+          game.handleChoice("explore");
+          resolvePromptIfAny(game);
+          resolveCombat(game);
+        },
+        60,
+        "补米(工程师进实验室)"
+      );
+      cookRiceUpTo(game, targetOnigiri);
+    }
+
     if (countItem(game.getState(), "cedar_wood") < 2) {
       doUntil(
         game,
@@ -652,6 +775,22 @@ export function runPlaythrough(opts = {}) {
     }
 
     travelTo(game, "forest_path");
+
+    // Pick up a couple herbs on the way; avoid entering the lab at 0 healing.
+    if (countItem(game.getState(), "herbs") < 2) {
+      doUntil(
+        game,
+        () => countItem(game.getState(), "herbs") >= 2,
+        () => {
+          game.handleChoice("explore");
+          resolvePromptIfAny(game);
+          resolveCombat(game);
+        },
+        60,
+        "补苦草(工程师进实验室)"
+      );
+    }
+
     travelTo(game, "ancient_lab");
     doUntil(
       game,
@@ -660,6 +799,10 @@ export function runPlaythrough(opts = {}) {
         game.handleChoice("explore");
         resolvePromptIfAny(game);
         resolveCombat(game);
+        const s = game.getState();
+        if (!s.combat && !s.gameOver && s.player.hp <= 10) {
+          game.handleChoice("rest");
+        }
       },
       200,
       "收集废金属(工程师手枪)"
@@ -743,63 +886,111 @@ export function runPlaythrough(opts = {}) {
     game.handleChoice("craft:forge_heavy_blade");
     assert(game.getState().flags.has_heavy_blade, "锻造重剑后应有 has_heavy_blade");
   }
-  doUntil(
-    game,
-    () => countItem(game.getState(), "rice") >= 8,
-    () => {
-      game.handleChoice("explore");
-      resolvePromptIfAny(game);
-      resolveCombat(game);
-    },
-    200,
-    "补米"
-  );
-  while (countItem(game.getState(), "rice") > 0) {
-    game.handleChoice("craft");
-    game.handleChoice("craft:cook_rice");
-  }
-  const herbTarget = game.getState().flags.class_mage || game.getState().flags.class_engineer ? 25 : 3;
-  doUntil(
-    game,
-    () => countItem(game.getState(), "herbs") >= herbTarget,
-    () => {
-      game.handleChoice("travel");
-      game.handleChoice("travel:forest_path");
-      game.handleChoice("explore");
-      resolvePromptIfAny(game);
-      resolveCombat(game);
-      game.handleChoice("travel");
-      game.handleChoice("travel:village");
-    },
-    200,
-    "补苦草"
-  );
-
-  // Mage/Engineer stability: prep boss consumables (warding_talisman / focus_tea / extra bound_charm).
-  if (game.getState().flags.class_mage || game.getState().flags.class_engineer) {
-    travelTo(game, "forest_path");
-    travelTo(game, "old_shrine");
+  // Normal-player top-ups (no hoarding): keep small carry caps.
+  if (countItem(game.getState(), "onigiri") < topUpTargetFor("onigiri")) {
+    const targetOnigiri = topUpTargetFor("onigiri");
+    const haveOnigiri = countItem(game.getState(), "onigiri");
+    const needRice = Math.max(0, targetOnigiri - haveOnigiri);
     doUntil(
       game,
-      () => countItem(game.getState(), "paper_charm") >= 12,
+      () => countItem(game.getState(), "rice") >= needRice,
       () => {
         game.handleChoice("explore");
         resolvePromptIfAny(game);
         resolveCombat(game);
       },
-      200,
-      "补纸符(法师补给)"
+      80,
+      "补少量米"
     );
-
-    travelTo(game, "forest_path");
-    travelTo(game, "village");
-
-    craftUntil(game, "bind_charm", "bound_charm", 4);
-    craftUntil(game, "enchant_warding_talisman", "warding_talisman", 4);
-    craftUntil(game, "craft_focus_tea", "focus_tea", 2);
+    cookRiceUpTo(game, targetOnigiri);
   }
 
-  // 9) 击败分支首领：晶域监视者
+  if (countItem(game.getState(), "herbs") < topUpTargetFor("herbs")) {
+    doUntil(
+      game,
+      () => countItem(game.getState(), "herbs") >= topUpTargetFor("herbs"),
+      () => {
+        game.handleChoice("travel");
+        game.handleChoice("travel:forest_path");
+        game.handleChoice("explore");
+        resolvePromptIfAny(game);
+        resolveCombat(game);
+        game.handleChoice("travel");
+        game.handleChoice("travel:village");
+      },
+      80,
+      "补少量苦草"
+    );
+  }
+
+  // Normal-player bounded prep: craft small amounts only if inputs already exist.
+  if (game.getState().flags.class_mage || game.getState().flags.class_engineer) {
+    travelTo(game, "forest_path");
+    travelTo(game, "old_shrine");
+    // If we're missing paper charms entirely, do a short, bounded top-up.
+    if (countItem(game.getState(), "paper_charm") < 2) {
+      doUntil(
+        game,
+        () => countItem(game.getState(), "paper_charm") >= 2,
+        () => {
+          game.handleChoice("explore");
+          resolvePromptIfAny(game);
+          resolveCombat(game);
+        },
+        60,
+        "补少量纸符"
+      );
+    }
+    travelTo(game, "village");
+    craftUpTo(game, "bind_charm", "bound_charm", topUpTargetFor("bound_charm"));
+    craftUpTo(game, "enchant_warding_talisman", "warding_talisman", topUpTargetFor("warding_talisman"));
+    craftUpTo(game, "craft_focus_tea", "focus_tea", topUpTargetFor("focus_tea"));
+  }
+
+  // 9) 分支首领前（正常玩家准备）：少量护身/药剂，不堆叠。
+  if (canSeeRecipe(game.getState(), "enchant_warding_talisman")) {
+    // Paper charms for warding_talisman (2 each).
+    if (countItem(game.getState(), "paper_charm") < 4) {
+      travelTo(game, "forest_path");
+      travelTo(game, "old_shrine");
+      doUntil(
+        game,
+        () => countItem(game.getState(), "paper_charm") >= 4,
+        () => {
+          game.handleChoice("explore");
+          resolvePromptIfAny(game);
+          resolveCombat(game);
+        },
+        120,
+        "补纸符(分支首领)"
+      );
+      travelTo(game, "forest_path");
+    }
+
+    // Herbs for 2 warding_talisman (6) + 2 potions (4).
+    if (countItem(game.getState(), "herbs") < 10) {
+      travelTo(game, "forest_path");
+      doUntil(
+        game,
+        () => countItem(game.getState(), "herbs") >= 10,
+        () => {
+          game.handleChoice("explore");
+          resolvePromptIfAny(game);
+          resolveCombat(game);
+        },
+        120,
+        "补苦草(分支首领)"
+      );
+    }
+
+    travelTo(game, "village");
+    if (countItem(game.getState(), "health_potion") < 2) {
+      craftUpTo(game, "brew_health_potion", "health_potion", 2);
+    }
+    craftUpTo(game, "enchant_warding_talisman", "warding_talisman", topUpTargetFor("warding_talisman"));
+    craftUpTo(game, "craft_focus_tea", "focus_tea", 1);
+  }
+
   travelTo(game, "forest_path");
   travelTo(game, "crystal_cave");
   assert(game.getState().location === "crystal_cave", "应到达 crystal_cave");
@@ -999,6 +1190,42 @@ export function runPlaythrough(opts = {}) {
       "刻印后应学会 stealth 或 counter"
     );
     assert(countItem(game.getState(), "spirit_stone") < stoneBefore, "刻印应消耗灵石");
+
+    // Final boss prep (normal player): rest, resupply a little, craft 1 warding_talisman if possible.
+    while (game.getState().player.hp < game.getState().player.maxHp) game.handleChoice("rest");
+
+    // Ensure enough paper_charm for warding talismans + bound charms.
+    if (countItem(game.getState(), "paper_charm") < 4) {
+      // Try to buy at paper_atrium first.
+      if (game.choices().some((c) => c.id === "talk")) {
+        for (let i = 0; i < 4 && countItem(game.getState(), "paper_charm") < 4; i++) {
+          if (!useNPCService(game, "atrium_scribe", "buy_paper_charm")) break;
+        }
+      }
+    }
+
+    // Ensure enough herbs (buy from waystation if needed) to avoid farming loops.
+    if (countItem(game.getState(), "herbs") < 6) {
+      travelTo(game, "fogback_waystation");
+      if (game.choices().some((c) => c.id === "talk")) {
+        for (let i = 0; i < 3 && countItem(game.getState(), "herbs") < 6; i++) {
+          if (!useNPCService(game, "waystation_quartermaster", "buy_herbs_bundle")) break;
+        }
+      }
+      travelTo(game, "rust_channel");
+      travelTo(game, "lower_works");
+      travelTo(game, "mist_well");
+      travelTo(game, "paper_atrium");
+    }
+
+    craftUpTo(game, "enchant_warding_talisman", "warding_talisman", topUpTargetFor("warding_talisman"));
+    craftUpTo(game, "bind_charm", "bound_charm", topUpTargetFor("bound_charm"));
+    craftUpTo(game, "craft_focus_tea", "focus_tea", 1);
+    if (countItem(game.getState(), "health_potion") < 2) {
+      craftUpTo(game, "brew_health_potion", "health_potion", 2);
+    }
+
+    while (game.getState().player.hp < game.getState().player.maxHp) game.handleChoice("rest");
 
     travelTo(game, "blacklight_heart");
     assert(game.getState().location === "blacklight_heart", "应到达 blacklight_heart");
